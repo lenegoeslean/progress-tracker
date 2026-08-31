@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>FitPaw – Fitness-Tracker</title>
+<title>lenegoeslean – Fitness-Tracker</title>
 
 <!-- iOS "Add to Home Screen" support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="FitPaw">
+<meta name="apple-mobile-web-app-title" content="lenegoeslean">
 <meta name="theme-color" content="#FFF6F9">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
@@ -151,9 +151,10 @@
     padding-bottom:var(--safe-bottom);
   }
   nav.tabbar button{
-    flex:1; background:none; border:none; padding:10px 2px 8px;
+    flex:1; min-width:0; background:none; border:none; padding:9px 1px 8px;
     display:flex; flex-direction:column; align-items:center; gap:3px;
-    color:var(--text-muted); font-size:10.5px; font-weight:600;
+    color:var(--text-muted); font-size:9.5px; font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   nav.tabbar button .dot{width:5px; height:5px; border-radius:50%; background:transparent;}
   nav.tabbar button.active{color:var(--accent);}
@@ -177,6 +178,21 @@
 
   .type-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border);}
   .type-row:last-child{border-bottom:none;}
+
+  .trend-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);}
+  .trend-row:last-child{border-bottom:none;}
+  .trend-row .trend-label{font-size:12.5px; color:var(--text-muted); font-weight:600;}
+  .trend-row .trend-value{font-size:15px; font-weight:700;}
+  .trend-delta{font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:999px;}
+  .trend-delta.up{background:var(--accent-soft-2); color:var(--accent-dark);}
+  .trend-delta.down{background:#F3F1F3; color:var(--text-muted);}
+  .trend-delta.flat{background:#F3F1F3; color:var(--text-muted);}
+
+  .best-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); gap:10px;}
+  .best-row:last-child{border-bottom:none;}
+  .best-row .best-label{font-size:12.5px; color:var(--text-muted); font-weight:600;}
+  .best-row .best-value{font-size:13px; font-weight:700; text-align:right;}
+  .best-row .best-sub{font-size:11px; color:var(--text-muted); font-weight:500;}
 
   /* calendar */
   .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; text-align:center;}
@@ -243,7 +259,7 @@
 
 <div id="app">
   <header class="topbar">
-    <div class="brand"><span class="paw">🐾</span> FitPaw</div>
+    <div class="brand"><span class="paw">🦒</span> lenegoeslean</div>
     <div class="today-pill" id="topbarDate"></div>
   </header>
 
@@ -254,6 +270,7 @@
     <section class="tab-panel" id="tab-monat"></section>
     <section class="tab-panel" id="tab-fotos"></section>
     <section class="tab-panel" id="tab-challenge"></section>
+    <section class="tab-panel" id="tab-trends"></section>
   </main>
 
   <nav class="tabbar">
@@ -263,6 +280,7 @@
     <button data-tab="monat"><span class="dot"></span>Monat</button>
     <button data-tab="fotos"><span class="dot"></span>Fotos</button>
     <button data-tab="challenge"><span class="dot"></span>Challenge</button>
+    <button data-tab="trends"><span class="dot"></span>Trends</button>
   </nav>
 </div>
 

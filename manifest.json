@@ -1,6 +1,6 @@
 {
-  "name": "FitPaw – Fitness-Tracker",
-  "short_name": "FitPaw",
+  "name": "lenegoeslean – Fitness-Tracker",
+  "short_name": "lenegoeslean",
   "description": "Dein persönlicher Fitness-Tracker für Workouts, Schritte, Progress-Fotos und wöchentliche Challenges.",
   "start_url": "./index.html",
   "scope": "./",

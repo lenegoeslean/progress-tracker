@@ -1,4 +1,4 @@
-/* FitPaw – Fitness-Tracker
+/* lenegoeslean – Fitness-Tracker
    Alle Daten werden ausschließlich lokal auf diesem Gerät gespeichert
    (localStorage für Trainings-/Challenge-Daten, IndexedDB für Fotos). */
 
@@ -19,14 +19,15 @@
 
   const SPORTS = {
     joggen:         { label: "Joggen",           icon: "🐇", bg: "#FFE3D1", fg: "#C97A3B", fields: ["pace", "distanz", "zeit", "kalorien"] },
-    inlineskaten:   { label: "Inline-Skaten",    icon: "🦩", bg: "#FFD9E8", fg: "#D6488B", fields: ["pace", "distanz", "zeit", "kalorien"] },
+    inclinewalk:    { label: "Incline-Walk",     icon: "🦊", bg: "#FFDCC2", fg: "#B85C1E", fields: ["zeit", "distanz", "kalorien"] },
+    inlineskaten:   { label: "Inline-Skaten",    icon: "🦖", bg: "#FFD9E8", fg: "#D6488B", fields: ["pace", "distanz", "zeit", "kalorien"] },
     zirkeltraining: { label: "Zirkel-Training",  icon: "🦁", bg: "#FFF3C4", fg: "#B08A1E", fields: ["zeit", "kalorien"] },
     cycling:        { label: "Cycling",          icon: "🐝", bg: "#FFF0D6", fg: "#C08A2E", fields: ["zeit", "kalorien"] },
-    schwimmen:      { label: "Schwimmen",        icon: "🐬", bg: "#D6F0FF", fg: "#2E86AB", fields: ["zeit", "distanz", "kalorien"] },
-    homeworkout:    { label: "Home-Workout",     icon: "🐨", bg: "#E4E9FF", fg: "#5A64B0", fields: ["zeit", "kalorien"] },
+    schwimmen:      { label: "Schwimmen",        icon: "🦈", bg: "#D6F0FF", fg: "#2E86AB", fields: ["zeit", "distanz", "kalorien"] },
+    homeworkout:    { label: "Home-Workout",     icon: "🐻", bg: "#E4E9FF", fg: "#5A64B0", fields: ["zeit", "kalorien"] },
     hulahoop:       { label: "Hula-Hoop",        icon: "🐒", bg: "#FFE7CE", fg: "#B87434", fields: ["zeit", "kalorien"] },
-    pilates:        { label: "Pilates",          icon: "🦢", bg: "#E9F7EF", fg: "#3F9767", fields: ["zeit", "kalorien"] },
-    reformerpilates:{ label: "Reformer-Pilates", icon: "🦄", bg: "#F3E3FF", fg: "#8C4FC9", fields: ["zeit", "kalorien"] },
+    pilates:        { label: "Pilates",          icon: "🫍", bg: "#E9F7EF", fg: "#3F9767", fields: ["zeit", "kalorien"] },
+    reformerpilates:{ label: "Reformer-Pilates", icon: "🦒", bg: "#F3E3FF", fg: "#8C4FC9", fields: ["zeit", "kalorien"] },
     restday:        { label: "Rest-Day",        icon: "🐼", bg: "#ECEAFB", fg: "#6B5FBD", fields: [] }
   };
 
@@ -820,10 +821,178 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Tab: Trends                                                        */
+  /* ---------------------------------------------------------------- */
+
+  function parsePaceSeconds(str) {
+    if (!str) return null;
+    const m = String(str).trim().match(/^(\d+):([0-5]?\d)$/);
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2]);
+  }
+
+  function computeStreaks() {
+    const data = Storage.load();
+    const isActive = (e) => !!e && ((e.activities && e.activities.some((a) => a.type !== "restday")) || (e.steps && e.steps > 0));
+    const activeDates = Object.keys(data.entries).filter((iso) => isActive(data.entries[iso])).sort();
+    let longest = activeDates.length ? 1 : 0, run = 1;
+    for (let i = 1; i < activeDates.length; i++) {
+      const diffDays = Math.round((fromISO(activeDates[i]) - fromISO(activeDates[i - 1])) / 86400000);
+      run = diffDays === 1 ? run + 1 : 1;
+      if (run > longest) longest = run;
+    }
+    let current = 0;
+    let cursor = new Date();
+    while (isActive(data.entries[toISO(cursor)])) {
+      current++;
+      cursor = addDays(cursor, -1);
+    }
+    return { current, longest };
+  }
+
+  function computeBests() {
+    const data = Storage.load();
+    let bestDistance = null, bestPace = null, bestCalorieSession = null;
+    Object.keys(data.entries).forEach((iso) => {
+      (data.entries[iso].activities || []).forEach((a) => {
+        if (!SPORTS[a.type]) return;
+        const dist = Number(a.distanz);
+        if (dist && (!bestDistance || dist > bestDistance.value)) bestDistance = { value: dist, type: a.type, date: iso };
+        const cal = Number(a.kalorien);
+        if (cal && (!bestCalorieSession || cal > bestCalorieSession.value)) bestCalorieSession = { value: cal, type: a.type, date: iso };
+        const paceSec = parsePaceSeconds(a.pace);
+        if (paceSec && (!bestPace || paceSec < bestPace.value)) bestPace = { value: paceSec, raw: a.pace, type: a.type, date: iso };
+      });
+    });
+    return { bestDistance, bestPace, bestCalorieSession };
+  }
+
+  function computeTopSports(limit) {
+    const data = Storage.load();
+    const counts = {};
+    Object.values(data.entries).forEach((entry) => {
+      (entry.activities || []).forEach((a) => {
+        if (a.type === "restday" || !SPORTS[a.type]) return;
+        counts[a.type] = (counts[a.type] || 0) + 1;
+      });
+    });
+    return Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, limit).map((k) => ({ type: k, count: counts[k] }));
+  }
+
+  function trendDelta(curVal, lastVal) {
+    if (!lastVal) return curVal ? { label: "neu", cls: "up" } : { label: "–", cls: "flat" };
+    const pct = Math.round(((curVal - lastVal) / lastVal) * 100);
+    if (pct > 0) return { label: `▲ ${pct}%`, cls: "up" };
+    if (pct < 0) return { label: `▼ ${Math.abs(pct)}%`, cls: "down" };
+    return { label: "±0%", cls: "flat" };
+  }
+
+  function renderTrends() {
+    const container = document.getElementById("tab-trends");
+    const today = new Date();
+    const curStart = startOfWeek(today);
+    const lastStart = addDays(curStart, -7);
+    const cur = weekAggregate(curStart);
+    const last = weekAggregate(lastStart);
+    const curStepsAvg = cur.stepDays ? Math.round(cur.steps / cur.stepDays) : 0;
+    const lastStepsAvg = last.stepDays ? Math.round(last.steps / last.stepDays) : 0;
+
+    const compareDefs = [
+      { label: "Ø Schritte/Tag", cur: curStepsAvg, last: lastStepsAvg, fmt: (v) => (v ? v.toLocaleString("de-DE") : "–") },
+      { label: "Minuten aktiv", cur: cur.minutes, last: last.minutes, fmt: (v) => String(v) },
+      { label: "Kalorien", cur: cur.calories, last: last.calories, fmt: (v) => v.toLocaleString("de-DE") },
+      { label: "Distanz (km)", cur: cur.distance, last: last.distance, fmt: (v) => v.toFixed(1) }
+    ];
+    const compareRows = compareDefs.map((r) => {
+      const d = trendDelta(r.cur, r.last);
+      return `<div class="trend-row">
+        <span class="trend-label">${r.label}</span>
+        <span class="trend-value">${r.fmt(r.cur)}</span>
+        <span class="trend-delta ${d.cls}">${d.label}</span>
+      </div>`;
+    }).join("");
+
+    const weeks = [];
+    for (let i = 7; i >= 0; i--) weeks.push({ ws: addDays(curStart, -7 * i), agg: weekAggregate(addDays(curStart, -7 * i)) });
+
+    const maxMinutes = Math.max(30, ...weeks.map((w) => w.agg.minutes));
+    const minuteBars = weeks.map((w) => {
+      const pct = Math.min(100, Math.round((w.agg.minutes / maxMinutes) * 100));
+      return `<div class="bar-row">
+        <div class="bar-label">KW${weekKey(w.ws).split("-W")[1]}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-val">${w.agg.minutes} min</div>
+      </div>`;
+    }).join("");
+
+    const maxStepsAvg = Math.max(1000, ...weeks.map((w) => (w.agg.stepDays ? Math.round(w.agg.steps / w.agg.stepDays) : 0)));
+    const stepBars = weeks.map((w) => {
+      const avg = w.agg.stepDays ? Math.round(w.agg.steps / w.agg.stepDays) : 0;
+      const pct = Math.min(100, Math.round((avg / maxStepsAvg) * 100));
+      return `<div class="bar-row">
+        <div class="bar-label">KW${weekKey(w.ws).split("-W")[1]}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-val">${avg ? avg.toLocaleString("de-DE") : "–"}</div>
+      </div>`;
+    }).join("");
+
+    const streaks = computeStreaks();
+    const bests = computeBests();
+
+    const bestRows = `
+      <div class="best-row">
+        <span class="best-label">Aktuelle Serie</span>
+        <div class="best-value">${streaks.current} ${streaks.current === 1 ? "Tag" : "Tage"}</div>
+      </div>
+      <div class="best-row">
+        <span class="best-label">Längste Serie</span>
+        <div class="best-value">${streaks.longest} ${streaks.longest === 1 ? "Tag" : "Tage"}</div>
+      </div>
+      <div class="best-row">
+        <span class="best-label">Längste Strecke</span>
+        <div class="best-value">${bests.bestDistance ? `${bests.bestDistance.value} km<div class="best-sub">${SPORTS[bests.bestDistance.type].icon} ${formatShortDate(fromISO(bests.bestDistance.date))}</div>` : "–"}</div>
+      </div>
+      <div class="best-row">
+        <span class="best-label">Schnellste Pace</span>
+        <div class="best-value">${bests.bestPace ? `${bests.bestPace.raw} min/km<div class="best-sub">${SPORTS[bests.bestPace.type].icon} ${formatShortDate(fromISO(bests.bestPace.date))}</div>` : "–"}</div>
+      </div>
+      <div class="best-row">
+        <span class="best-label">Meiste Kalorien (Einheit)</span>
+        <div class="best-value">${bests.bestCalorieSession ? `${bests.bestCalorieSession.value} kcal<div class="best-sub">${SPORTS[bests.bestCalorieSession.type].icon} ${formatShortDate(fromISO(bests.bestCalorieSession.date))}</div>` : "–"}</div>
+      </div>
+    `;
+
+    const topSports = computeTopSports(3);
+    const topSportsHTML = topSports.length
+      ? topSports.map((t) => {
+          const s = SPORTS[t.type];
+          return `<span class="chip" style="background:${s.bg};color:${s.fg};"><span class="emoji">${s.icon}</span>${s.label} × ${t.count}</span>`;
+        }).join(" ")
+      : `<span class="small muted">Noch keine Aktivitäten erfasst.</span>`;
+
+    container.innerHTML = `
+      <h2 class="section-title" style="margin-top:0;">Diese Woche vs. letzte Woche</h2>
+      <div class="card">${compareRows}</div>
+
+      <h2 class="section-title">Minuten – letzte 8 Wochen</h2>
+      <div class="card">${minuteBars}</div>
+
+      <h2 class="section-title">Ø Schritte/Tag – letzte 8 Wochen</h2>
+      <div class="card">${stepBars}</div>
+
+      <h2 class="section-title">Bestwerte</h2>
+      <div class="card">${bestRows}</div>
+
+      <h2 class="section-title">Beliebteste Sportarten</h2>
+      <div class="card">${topSportsHTML}</div>
+    `;
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Tab-Steuerung                                                      */
   /* ---------------------------------------------------------------- */
 
-  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge };
+  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends };
 
   function switchTab(tab) {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));

@@ -1,4 +1,4 @@
-# FitPaw – dein Fitness-Tracker 🐾
+# lenegoeslean – dein Fitness-Tracker 🦒
 
 Eine kleine, installierbare Web-App (PWA) für dein iPhone. Läuft komplett
 im Browser, speichert alle Daten **nur lokal auf deinem iPhone** und
@@ -17,7 +17,7 @@ auf GitHub hochlädst.
 
 ## 1. Auf GitHub hochladen
 
-1. Erstelle auf [github.com](https://github.com) ein neues **öffentliches** Repository, z. B. `fitpaw`.
+1. Erstelle auf [github.com](https://github.com) ein neues **öffentliches** Repository, z. B. `lenegoeslean`.
    (Öffentlich ist unproblematisch – es werden nur die leeren App-Dateien
    veröffentlicht, deine persönlichen Trainingsdaten bleiben ausschließlich
    auf deinem iPhone gespeichert und werden nie hochgeladen.)
@@ -38,7 +38,7 @@ auf GitHub hochlädst.
 3. Wähle **„Zum Home-Bildschirm"**.
 4. Bestätige mit **„Hinzufügen"**.
 
-Jetzt hast du ein FitPaw-Icon auf deinem Home-Bildschirm, das sich wie
+Jetzt hast du ein lenegoeslean-Icon auf deinem Home-Bildschirm, das sich wie
 eine normale App öffnet (ohne Safari-Adressleiste).
 
 ## 3. Updates ausrollen
@@ -69,16 +69,27 @@ Server und kein Konto. Das bedeutet:
 
 Jede Sportart hat eine eigene Pastellfarbe und ein Tier-Icon:
 
-🐇 Joggen · 🦩 Inline-Skaten · 🦁 Zirkel-Training · 🐝 Cycling ·
-🐬 Schwimmen · 🐨 Home-Workout · 🐒 Hula-Hoop · 🦢 Pilates ·
-🦄 Reformer-Pilates · 🐼 Rest-Day
+🐇 Joggen · 🦊 Incline-Walk · 🦖 Inline-Skaten · 🦁 Zirkel-Training ·
+🐝 Cycling · 🦈 Schwimmen · 🐻 Home-Workout · 🐒 Hula-Hoop ·
+🫍 Pilates · 🦒 Reformer-Pilates · 🐼 Rest-Day
+
+## 6. Trends-Tab
+
+Im Tab „Trends" siehst du automatisch berechnete Auswertungen auf Basis
+deiner bisherigen Einträge: aktuelle Woche im Vergleich zur Vorwoche,
+Minuten- und Schritte-Verlauf der letzten 8 Wochen, persönliche Bestwerte
+(längste Strecke, schnellste Pace, meiste Kalorien in einer Einheit,
+aktuelle & längste Aktiv-Serie) sowie deine beliebtesten Sportarten. Alles
+wird live aus deinen lokal gespeicherten Daten berechnet, es gibt keinen
+zusätzlichen Speicherort.
 
 ## Mögliche nächste Schritte
 
-Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen können:
+Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
 
-- Eigener App-Name/Icon-Feinschliff
+- Gewicht/Maße-Tracking mit eigenem Verlauf im Trends-Tab
+- Wochenziele (z. B. Schritte- oder Minutenziel) mit Fortschrittsanzeige
 - Erinnerungen/Push-Benachrichtigungen (auf iOS aktuell technisch eingeschränkt)
-- Zusätzliche Auswertungen/Diagramme
 - Passwortschutz oder Face-ID-Sperre für die App
+- Motivierende Kurznachrichten/Badges bei Streaks oder erreichten Zielen
 - Cloud-Sync, falls du die App später doch auf mehreren Geräten nutzen möchtest
