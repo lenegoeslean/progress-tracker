@@ -8,10 +8,10 @@
 <!-- iOS "Add to Home Screen" support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="lenegoeslean">
+<meta name="apple-mobile-web-app-title" content="lenegoeslean" id="appleTitleMeta">
 <meta name="theme-color" content="#FFF6F9">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" id="manifestLink">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -299,7 +299,7 @@
 
 <div id="app">
   <header class="topbar">
-    <div class="brand"><span class="paw">🦒</span> lenegoeslean</div>
+    <div class="brand"><span class="paw">🦒</span> <span id="brandName">lenegoeslean</span></div>
     <div style="display:flex; align-items:center; gap:10px;">
       <div class="today-pill" id="topbarDate"></div>
       <button id="settingsBtn" class="btn-icon" aria-label="Einstellungen" style="width:30px; height:30px; font-size:15px;">⚙️</button>

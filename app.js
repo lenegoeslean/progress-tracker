@@ -36,6 +36,7 @@
   const DEFAULT_STEPS_GOAL = 10000;
   const DEFAULT_WATER_GOAL_ML = 2000;
   const WATER_STEP_ML = 250;
+  const DEFAULT_APP_NAME = "lenegoeslean";
 
   const FIELD_META = {
     pace:     { label: "Pace",     unit: "min/km", type: "text",   placeholder: "z. B. 5:30" },
@@ -63,9 +64,68 @@
     root.setProperty("--border", t.border);
   }
 
+  /* Ändert den in der App angezeigten Namen (Header, Titel, Home-Bildschirm-
+     Beschriftung für zukünftige "Zum Home-Bildschirm"-Vorgänge). Bereits
+     zum Home-Bildschirm hinzugefügte Icons behalten ihren Namen, bis sie
+     neu hinzugefügt werden – das ist eine iOS-Einschränkung. */
+  function applyAppName(name) {
+    const safeName = (name || "").trim() || DEFAULT_APP_NAME;
+
+    document.title = `${safeName} – Fitness-Tracker`;
+    const brandEl = document.getElementById("brandName");
+    if (brandEl) brandEl.textContent = safeName;
+    const appleTitle = document.getElementById("appleTitleMeta");
+    if (appleTitle) appleTitle.setAttribute("content", safeName);
+
+    const link = document.getElementById("manifestLink");
+    if (!link) return;
+
+    if (safeName === DEFAULT_APP_NAME) {
+      // Zurück zum Standard-Manifest (Datei), kein Blob nötig.
+      if (link.dataset.blobUrl) {
+        URL.revokeObjectURL(link.dataset.blobUrl);
+        delete link.dataset.blobUrl;
+      }
+      link.href = "manifest.json";
+      return;
+    }
+
+    try {
+      const manifest = {
+        name: `${safeName} – Fitness-Tracker`,
+        short_name: safeName,
+        description: "Dein persönlicher Fitness-Tracker für Workouts, Schritte, Progress-Fotos und wöchentliche Challenges.",
+        start_url: new URL("./index.html", window.location.href).href,
+        scope: new URL("./", window.location.href).href,
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#FFF6F9",
+        theme_color: "#FFF6F9",
+        lang: "de",
+        icons: [
+          { src: new URL("icons/icon-192.png", window.location.href).href, sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: new URL("icons/icon-512.png", window.location.href).href, sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: new URL("icons/icon-maskable-192.png", window.location.href).href, sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: new URL("icons/icon-maskable-512.png", window.location.href).href, sizes: "512x512", type: "image/png", purpose: "maskable" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+      const url = URL.createObjectURL(blob);
+      if (link.dataset.blobUrl) URL.revokeObjectURL(link.dataset.blobUrl);
+      link.href = url;
+      link.dataset.blobUrl = url;
+    } catch (e) {
+      console.warn("Manifest konnte nicht mit neuem Namen erzeugt werden", e);
+    }
+  }
+
   /* ---------------------------------------------------------------- */
   /* Datum-Hilfsfunktionen                                             */
   /* ---------------------------------------------------------------- */
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
 
   function toISO(date) {
     const y = date.getFullYear(), m = String(date.getMonth() + 1).padStart(2, "0"), d = String(date.getDate()).padStart(2, "0");
@@ -181,7 +241,7 @@
     },
     getSettings() {
       const data = this.load();
-      return Object.assign({ theme: "pink", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML }, data.settings);
+      return Object.assign({ theme: "pink", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME }, data.settings);
     },
     saveSettings(patch) {
       const data = this.load();
@@ -209,6 +269,7 @@
   };
 
   applyTheme(Storage.getSettings().theme);
+  applyAppName(Storage.getSettings().appName);
 
   /* ---------------------------------------------------------------- */
   /* IndexedDB (Fotos)                                                  */
@@ -1333,7 +1394,23 @@
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">Einstellungen</h2>
 
-      <h2 class="section-title" style="margin-top:0;">Farbschema</h2>
+      <h2 class="section-title" style="margin-top:0;">App-Name</h2>
+      <div class="card">
+        <div class="field" style="margin-bottom:10px;">
+          <label class="field-label">Angezeigter Name</label>
+          <input type="text" id="appNameInput" maxlength="30" value="${escapeHtml(settings.appName || "")}" placeholder="lenegoeslean">
+        </div>
+        <button class="btn btn-primary btn-block" id="saveAppNameBtn">Name speichern</button>
+        <div class="small muted" style="margin-top:10px;">
+          Ändert den Namen im Header und den Titel der App. Für ein Icon,
+          das du <strong>noch nicht</strong> zum Home-Bildschirm hinzugefügt
+          hast, wird dieser Name beim Hinzufügen mit übernommen. Ein bereits
+          vorhandenes Icon behält seinen Namen – lösche es in dem Fall vom
+          Home-Bildschirm und füge die Seite danach erneut hinzu.
+        </div>
+      </div>
+
+      <h2 class="section-title">Farbschema</h2>
       <div class="card">
         <div class="theme-swatch-row">${themeSwatches}</div>
       </div>
@@ -1364,9 +1441,18 @@
 
       <h2 class="section-title">Über die App</h2>
       <div class="card small muted">
-        lenegoeslean · Alle Daten werden ausschließlich lokal auf diesem Gerät gespeichert.
+        ${escapeHtml(settings.appName || DEFAULT_APP_NAME)} · Alle Daten werden ausschließlich lokal auf diesem Gerät gespeichert.
       </div>
     `;
+
+    document.getElementById("saveAppNameBtn").addEventListener("click", () => {
+      const raw = document.getElementById("appNameInput").value.trim();
+      const name = raw || DEFAULT_APP_NAME;
+      Storage.saveSettings({ appName: name });
+      applyAppName(name);
+      showToast("Name gespeichert");
+      renderEinstellungen();
+    });
 
     container.querySelectorAll(".theme-swatch").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1405,6 +1491,9 @@
         if (!confirm("Backup einspielen? Deine aktuellen App-Daten werden dabei überschrieben.")) return;
         try {
           Storage.importAll(reader.result);
+          const s = Storage.getSettings();
+          applyTheme(s.theme);
+          applyAppName(s.appName);
           showToast("Backup eingespielt");
           renderEinstellungen();
         } catch (e) {

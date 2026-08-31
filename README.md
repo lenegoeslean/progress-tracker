@@ -165,6 +165,14 @@ zusätzlichen Speicherort.
 Über das ⚙️-Symbol oben rechts im Header öffnest du den Tab
 **Einstellungen**. Dort kannst du:
 
+- **App-Namen ändern**: trägst du hier einen neuen Namen ein (Standard:
+  „lenegoeslean") und speicherst, ändert sich sofort der Name im Header und
+  der Browser-/App-Titel. Wichtig: Ein Icon, das du **bereits** zum
+  Home-Bildschirm hinzugefügt hast, behält seine Beschriftung dort – das
+  ist eine iOS-Einschränkung, iOS liest den Namen nur beim Hinzufügen ein.
+  Möchtest du auch die Beschriftung auf dem Home-Bildschirm ändern: Namen
+  hier speichern → altes Icon vom Home-Bildschirm löschen → Seite in
+  Safari neu laden → erneut über „Zum Home-Bildschirm" hinzufügen.
 - **Farbdesign wählen**: fünf Farboptionen stehen zur Auswahl – Pink
   (Standard), Lavendel, Minze, Pfirsich und Himmelblau. Ein Tipp auf eine
   Farbe wechselt das komplette App-Design sofort (Hintergrund, Akzentfarbe,
