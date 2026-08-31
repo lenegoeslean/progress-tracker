@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>FitPaw – Fitness-Tracker</title>
+
+<!-- iOS "Add to Home Screen" support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FitPaw">
+<meta name="theme-color" content="#FFF6F9">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#FFF6F9;
+    --card:#FFFFFF;
+    --accent:#FF4D8D;
+    --accent-dark:#E23E76;
+    --accent-soft:#FFDCEA;
+    --accent-soft-2:#FFEEF4;
+    --text:#2E2530;
+    --text-muted:#948A93;
+    --border:#FBE1EC;
+    --radius:16px;
+    --radius-sm:10px;
+    --safe-bottom:env(safe-area-inset-bottom, 0px);
+    --safe-top:env(safe-area-inset-top, 0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
+  }
+  #app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg);
+  }
+  header.topbar{
+    position:sticky; top:0; z-index:20;
+    padding:calc(14px + var(--safe-top)) 20px 12px;
+    background:rgba(255,246,249,0.92);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .brand{display:flex; align-items:center; gap:8px; font-weight:700; font-size:17px;}
+  .brand .paw{font-size:18px;}
+  .today-pill{font-size:12px; color:var(--text-muted); font-weight:500;}
+
+  main{flex:1; padding:16px 16px calc(90px + var(--safe-bottom)); }
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block; animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  h2.section-title{font-size:15px; font-weight:700; margin:22px 0 10px; color:var(--text);}
+  h2.section-title:first-child{margin-top:0;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:12px;
+  }
+  .card + .card{margin-top:0;}
+
+  .row-between{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .muted{color:var(--text-muted);}
+  .small{font-size:12px;}
+
+  label.field-label{display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px;}
+  input[type="text"],input[type="number"],select,textarea{
+    width:100%;
+    font-family:inherit;
+    font-size:15px;
+    padding:11px 12px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:#FFFCFD;
+    color:var(--text);
+    appearance:none;
+    -webkit-appearance:none;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
+  input[type="checkbox"]{accent-color:var(--accent); width:18px; height:18px;}
+  .field{margin-bottom:12px;}
+  .field-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  button{font-family:inherit; cursor:pointer;}
+  .btn{
+    border:none; border-radius:999px; padding:11px 18px;
+    font-weight:600; font-size:14px;
+  }
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-secondary{background:var(--accent-soft-2); color:var(--accent-dark); border:1px solid var(--accent-soft);}
+  .btn-ghost{background:transparent; color:var(--text-muted); border:1px solid var(--border);}
+  .btn-block{width:100%;}
+  .btn-sm{padding:7px 12px; font-size:13px;}
+  .btn-icon{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
+    background:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--text-muted);
+    padding:0;
+  }
+
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    border-radius:999px; padding:6px 10px 6px 8px;
+    font-size:13px; font-weight:600;
+    border:1px solid rgba(0,0,0,0.04);
+  }
+  .chip .emoji{font-size:15px;}
+
+  .activity-item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; border-radius:var(--radius-sm);
+    margin-bottom:8px; border:1px solid var(--border);
+  }
+  .activity-item .info{display:flex; align-items:center; gap:10px;}
+  .activity-item .stats{font-size:12px; color:var(--text-muted); margin-top:2px;}
+  .activity-item .icon-badge{
+    width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px;
+  }
+  .del-btn{background:none; border:none; color:var(--text-muted); font-size:16px; padding:4px 6px;}
+
+  .empty-hint{color:var(--text-muted); font-size:13px; text-align:center; padding:18px 8px;}
+
+  /* bottom nav */
+  nav.tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    max-width:520px; margin:0 auto;
+    background:rgba(255,255,255,0.96);
+    backdrop-filter:blur(10px);
+    border-top:1px solid var(--border);
+    display:flex;
+    padding-bottom:var(--safe-bottom);
+  }
+  nav.tabbar button{
+    flex:1; background:none; border:none; padding:10px 2px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    color:var(--text-muted); font-size:10.5px; font-weight:600;
+  }
+  nav.tabbar button .dot{width:5px; height:5px; border-radius:50%; background:transparent;}
+  nav.tabbar button.active{color:var(--accent);}
+  nav.tabbar button.active .dot{background:var(--accent);}
+
+  /* week/month nav */
+  .period-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .period-nav .period-label{font-weight:700; font-size:15px;}
+  .period-nav .period-sub{font-size:12px; color:var(--text-muted); font-weight:500;}
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .stat-box{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px;}
+  .stat-box .stat-value{font-size:20px; font-weight:700;}
+  .stat-box .stat-label{font-size:11.5px; color:var(--text-muted); font-weight:600; margin-top:2px;}
+
+  .bar-row{display:flex; align-items:center; gap:10px; margin-bottom:9px;}
+  .bar-row .bar-label{width:34px; font-size:12px; font-weight:600; color:var(--text-muted);}
+  .bar-track{flex:1; height:9px; background:var(--accent-soft-2); border-radius:6px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--accent); border-radius:6px;}
+  .bar-row .bar-val{width:52px; text-align:right; font-size:11.5px; color:var(--text-muted);}
+
+  .type-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border);}
+  .type-row:last-child{border-bottom:none;}
+
+  /* calendar */
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; text-align:center;}
+  .cal-wd{font-size:10.5px; color:var(--text-muted); font-weight:700; padding-bottom:4px;}
+  .cal-day{
+    position:relative; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:10px; font-size:13px; font-weight:600; background:#FFFCFD; border:1px solid var(--border);
+    color:var(--text);
+  }
+  .cal-day.other{opacity:0.28;}
+  .cal-day.today{border-color:var(--accent); color:var(--accent-dark);}
+  .cal-day.selected{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .cal-day .mark{position:absolute; bottom:4px; display:flex; gap:2px;}
+  .cal-day .mark span{width:4px; height:4px; border-radius:50%; background:var(--accent);}
+  .cal-day.selected .mark span{background:#fff;}
+
+  /* photos */
+  .photo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .photo-thumb{position:relative; aspect-ratio:3/4; border-radius:12px; overflow:hidden; background:var(--accent-soft-2); border:1px solid var(--border);}
+  .photo-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .photo-thumb .pdate{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent,rgba(0,0,0,0.55)); color:#fff; font-size:9.5px; padding:10px 5px 4px; text-align:center; font-weight:600;}
+  .add-photo-tile{
+    aspect-ratio:3/4; border-radius:12px; border:2px dashed var(--accent-soft); display:flex; align-items:center; justify-content:center;
+    color:var(--accent); font-size:26px; font-weight:300; background:var(--accent-soft-2);
+  }
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(30,20,26,0.55); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .modal-backdrop.hidden{display:none;}
+  .modal-card{background:#fff; border-radius:18px; padding:16px; max-width:420px; width:100%; max-height:85vh; overflow:auto;}
+  .modal-card img{width:100%; border-radius:12px; margin-bottom:10px;}
+
+  .progress-bar-lg{height:12px; border-radius:8px; background:var(--accent-soft-2); overflow:hidden; margin:10px 0;}
+  .progress-bar-lg .fill{height:100%; background:var(--accent);}
+
+  .week-dots{display:flex; justify-content:space-between; margin-top:12px;}
+  .week-dot{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:10.5px; color:var(--text-muted); font-weight:700;}
+  .week-dot .circle{
+    width:30px; height:30px; border-radius:50%; border:2px solid var(--border); background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--text-muted);
+  }
+  .week-dot .circle.done{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .week-dot.today .circle{border-color:var(--accent-dark);}
+
+  .toast{
+    position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    background:var(--text); color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; font-weight:600;
+    z-index:60; opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+
+  .update-banner{
+    position:fixed; top:calc(8px + var(--safe-top)); left:50%; transform:translateX(-50%);
+    background:var(--text); color:#fff; padding:9px 16px; border-radius:999px; font-size:12.5px; font-weight:600;
+    z-index:70; display:none; align-items:center; gap:8px;
+  }
+  .update-banner.show{display:flex;}
+  .update-banner button{background:var(--accent); color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:11.5px; font-weight:700;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="paw">🐾</span> FitPaw</div>
+    <div class="today-pill" id="topbarDate"></div>
+  </header>
+
+  <main>
+    <section class="tab-panel active" id="tab-heute"></section>
+    <section class="tab-panel" id="tab-woche"></section>
+    <section class="tab-panel" id="tab-kalender"></section>
+    <section class="tab-panel" id="tab-monat"></section>
+    <section class="tab-panel" id="tab-fotos"></section>
+    <section class="tab-panel" id="tab-challenge"></section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-tab="heute" class="active"><span class="dot"></span>Heute</button>
+    <button data-tab="woche"><span class="dot"></span>Woche</button>
+    <button data-tab="kalender"><span class="dot"></span>Kalender</button>
+    <button data-tab="monat"><span class="dot"></span>Monat</button>
+    <button data-tab="fotos"><span class="dot"></span>Fotos</button>
+    <button data-tab="challenge"><span class="dot"></span>Challenge</button>
+  </nav>
+</div>
+
+<div class="modal-backdrop hidden" id="photoModal"></div>
+<div class="toast" id="toast"></div>
+<div class="update-banner" id="updateBanner">Neue Version verfügbar <button id="updateBtn">Aktualisieren</button></div>
+
+<script src="app.js"></script>
+</body>
+</html>
