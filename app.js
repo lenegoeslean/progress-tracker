@@ -37,6 +37,8 @@
   const DEFAULT_WATER_GOAL_ML = 2000;
   const WATER_STEP_ML = 250;
   const DEFAULT_APP_NAME = "lenegoeslean";
+  const DEFAULT_WEEKLY_GOAL_SESSIONS = 4;
+  const DEFAULT_WEEKLY_GOAL_MINUTES = 150;
 
   const FIELD_META = {
     pace:     { label: "Pace",     unit: "min/km", type: "text",   placeholder: "z. B. 5:30" },
@@ -241,7 +243,10 @@
     },
     getSettings() {
       const data = this.load();
-      return Object.assign({ theme: "pink", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME }, data.settings);
+      return Object.assign({
+        theme: "pink", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
+        weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES
+      }, data.settings);
     },
     saveSettings(patch) {
       const data = this.load();
@@ -402,7 +407,10 @@
                 <div class="stats">${statParts || "&nbsp;"}</div>
               </div>
             </div>
-            <button class="del-btn" data-del-activity="${a.id}" aria-label="Löschen">✕</button>
+            <div class="item-actions">
+              <button type="button" class="edit-btn" data-edit-activity="${a.id}" aria-label="Bearbeiten">✎</button>
+              <button class="del-btn" data-del-activity="${a.id}" aria-label="Löschen">✕</button>
+            </div>
           </div>`;
         }).join("")
       : `<div class="empty-hint">Noch keine Aktivität eingetragen.</div>`;
@@ -468,7 +476,8 @@
             <select class="sport-select">${sportOptions}</select>
           </div>
           <div class="dynamic-fields field-grid"></div>
-          <button type="submit" class="btn btn-primary btn-block" style="margin-top:4px;">+ Aktivität hinzufügen</button>
+          <button type="submit" class="btn btn-primary btn-block activity-submit-btn" style="margin-top:4px;">+ Aktivität hinzufügen</button>
+          <button type="button" class="btn btn-ghost btn-block cancel-edit-btn" style="margin-top:8px; display:none;">Bearbeiten abbrechen</button>
         </form>
       </div>
     `;
@@ -553,11 +562,55 @@
     });
 
     const form = container.querySelector(".add-activity-form");
+    const submitBtn = form.querySelector(".activity-submit-btn");
+    const cancelEditBtn = form.querySelector(".cancel-edit-btn");
+    let editingId = null;
+
+    function resetToAddMode() {
+      editingId = null;
+      sportSelect.selectedIndex = 0;
+      renderDynamicFields(dynamicFields, sportSelect.value);
+      submitBtn.textContent = "+ Aktivität hinzufügen";
+      cancelEditBtn.style.display = "none";
+      container.querySelectorAll(".activity-item.editing").forEach((el) => el.classList.remove("editing"));
+    }
+
+    container.querySelectorAll("[data-edit-activity]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit-activity");
+        const entry = Storage.getEntry(dateISO);
+        const activity = entry.activities.find((a) => a.id === id);
+        if (!activity) return;
+
+        editingId = id;
+        sportSelect.value = activity.type;
+        renderDynamicFields(dynamicFields, activity.type);
+        const sport = SPORTS[activity.type] || SPORTS.restday;
+        if (sport.custom) {
+          const nameInput = dynamicFields.querySelector('[data-field="customName"]');
+          if (nameInput) nameInput.value = activity.customName || "";
+        }
+        sport.fields.forEach((f) => {
+          const input = dynamicFields.querySelector(`[data-field="${f}"]`);
+          if (input) input.value = activity[f] ?? "";
+        });
+
+        submitBtn.textContent = "Änderungen speichern";
+        cancelEditBtn.style.display = "block";
+        container.querySelectorAll(".activity-item").forEach((el) => {
+          el.classList.toggle("editing", el.getAttribute("data-activity-id") === id);
+        });
+        form.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
+
+    cancelEditBtn.addEventListener("click", () => resetToAddMode());
+
     form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       const type = sportSelect.value;
       const sport = SPORTS[type];
-      const activity = { id: genId(), type };
+      const activity = { id: editingId || genId(), type };
       if (sport.custom) {
         const nameInput = dynamicFields.querySelector('[data-field="customName"]');
         activity.customName = (nameInput && nameInput.value.trim()) || "Sonstiges";
@@ -566,8 +619,17 @@
         const input = dynamicFields.querySelector(`[data-field="${f}"]`);
         activity[f] = input ? input.value : "";
       });
-      Storage.updateEntry(dateISO, (e) => { e.activities.push(activity); });
-      showToast("Aktivität hinzugefügt");
+      if (editingId) {
+        Storage.updateEntry(dateISO, (e) => {
+          const idx = e.activities.findIndex((a) => a.id === editingId);
+          if (idx !== -1) e.activities[idx] = activity; else e.activities.push(activity);
+        });
+        showToast("Aktivität aktualisiert");
+      } else {
+        Storage.updateEntry(dateISO, (e) => { e.activities.push(activity); });
+        showToast("Aktivität hinzugefügt");
+      }
+      editingId = null;
       onChange();
     });
   }
@@ -597,7 +659,7 @@
 
   function weekAggregate(weekStart) {
     const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-    let steps = 0, stepDays = 0, minutes = 0, calories = 0, distance = 0;
+    let steps = 0, stepDays = 0, minutes = 0, calories = 0, distance = 0, sessionsCount = 0;
     const byType = {};
     days.forEach((d) => {
       const entry = Storage.getEntry(toISO(d));
@@ -607,12 +669,13 @@
         minutes += m;
         calories += Number(a.kalorien) || 0;
         distance += Number(a.distanz) || 0;
+        if (a.type !== "restday") sessionsCount++;
         if (!byType[a.type]) byType[a.type] = { count: 0, minutes: 0 };
         byType[a.type].count++;
         byType[a.type].minutes += m || 1;
       });
     });
-    return { days, steps, stepDays, minutes, calories, distance, byType };
+    return { days, steps, stepDays, minutes, calories, distance, byType, sessionsCount };
   }
 
   function buildActivityMixBar(weights) {
@@ -662,6 +725,25 @@
 
     const stepsChart = buildVerticalBarChart(agg.days, (d) => Storage.getEntry(toISO(d)).steps || 0);
 
+    const goals = Storage.getSettings();
+    let weeklyGoalHTML = "";
+    if (goals.weeklyGoalMode === "sessions" || goals.weeklyGoalMode === "minutes") {
+      const isSessions = goals.weeklyGoalMode === "sessions";
+      const target = isSessions ? (goals.weeklyGoalSessions || DEFAULT_WEEKLY_GOAL_SESSIONS) : (goals.weeklyGoalMinutes || DEFAULT_WEEKLY_GOAL_MINUTES);
+      const val = isSessions ? agg.sessionsCount : agg.minutes;
+      const pct = Math.min(100, Math.round((val / target) * 100));
+      const label = isSessions ? "Trainingseinheiten" : "Aktive Minuten";
+      const valueText = isSessions ? `${val} / ${target}` : `${val} / ${target} min`;
+      weeklyGoalHTML = `
+        <h2 class="section-title">Wochenziel</h2>
+        <div class="card">
+          <div class="row-between"><span class="field-label" style="margin-bottom:0;">${label} diese Woche</span><span class="small muted">${valueText}</span></div>
+          <div class="progress-bar-lg" style="margin-top:10px;"><div class="fill" style="width:${pct}%"></div></div>
+          ${val >= target ? `<div class="goal-caption">🎯 Wochenziel erreicht!</div>` : ""}
+        </div>
+      `;
+    }
+
     container.innerHTML = `
       <div class="period-nav">
         <button class="btn-icon" id="wochePrev">‹</button>
@@ -678,6 +760,8 @@
         <div class="stat-box"><div class="stat-value">${agg.distance.toFixed(1)}</div><div class="stat-label">📍 KM ZURÜCKGELEGT</div></div>
         <div class="stat-box"><div class="stat-value">${agg.stepDays ? Math.round(agg.steps / agg.stepDays).toLocaleString("de-DE") : "–"}</div><div class="stat-label">👟 Ø SCHRITTE / TAG</div></div>
       </div>
+
+      ${weeklyGoalHTML}
 
       <h2 class="section-title">Aktivitäten diese Woche</h2>
       <div class="card">
@@ -1428,6 +1512,28 @@
         <button class="btn btn-primary btn-block" id="saveGoalsBtn" style="margin-top:12px;">Ziele speichern</button>
       </div>
 
+      <h2 class="section-title">Wochenziel</h2>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">Art des Ziels</label>
+          <select id="weeklyGoalModeInput">
+            <option value="sessions" ${settings.weeklyGoalMode === "sessions" ? "selected" : ""}>Anzahl Trainingseinheiten</option>
+            <option value="minutes" ${settings.weeklyGoalMode === "minutes" ? "selected" : ""}>Aktive Minuten</option>
+            <option value="off" ${settings.weeklyGoalMode === "off" ? "selected" : ""}>Kein Wochenziel</option>
+          </select>
+        </div>
+        <div class="field" id="weeklyGoalSessionsField">
+          <label class="field-label">Trainingseinheiten pro Woche</label>
+          <input type="number" min="1" step="1" id="weeklyGoalSessionsInput" value="${settings.weeklyGoalSessions}">
+        </div>
+        <div class="field" id="weeklyGoalMinutesField" style="margin-bottom:0;">
+          <label class="field-label">Aktive Minuten pro Woche</label>
+          <input type="number" min="10" step="10" id="weeklyGoalMinutesInput" value="${settings.weeklyGoalMinutes}">
+        </div>
+        <button class="btn btn-primary btn-block" id="saveWeeklyGoalBtn" style="margin-top:12px;">Wochenziel speichern</button>
+        <div class="small muted" style="margin-top:10px;">Erscheint als Fortschrittsbalken oben im Tab „Woche".</div>
+      </div>
+
       <h2 class="section-title">Daten</h2>
       <div class="card">
         <div class="small muted" style="margin-bottom:10px;">Sichere ein vollständiges Backup aller App-Daten (Workouts, Challenges, Gewicht, Einstellungen) als Datei, oder spiele ein zuvor gesichertes Backup wieder ein. Progress-Fotos sind hier nicht enthalten.</div>
@@ -1468,6 +1574,22 @@
       const water = Math.max(250, parseInt(document.getElementById("goalWaterInput").value, 10) || DEFAULT_WATER_GOAL_ML);
       Storage.saveSettings({ stepsGoal: steps, waterGoalMl: water });
       showToast("Ziele gespeichert");
+    });
+
+    function updateWeeklyGoalFieldsVisibility() {
+      const mode = document.getElementById("weeklyGoalModeInput").value;
+      document.getElementById("weeklyGoalSessionsField").style.display = mode === "sessions" ? "block" : "none";
+      document.getElementById("weeklyGoalMinutesField").style.display = mode === "minutes" ? "block" : "none";
+    }
+    updateWeeklyGoalFieldsVisibility();
+    document.getElementById("weeklyGoalModeInput").addEventListener("change", updateWeeklyGoalFieldsVisibility);
+
+    document.getElementById("saveWeeklyGoalBtn").addEventListener("click", () => {
+      const mode = document.getElementById("weeklyGoalModeInput").value;
+      const sessions = Math.max(1, parseInt(document.getElementById("weeklyGoalSessionsInput").value, 10) || DEFAULT_WEEKLY_GOAL_SESSIONS);
+      const minutes = Math.max(10, parseInt(document.getElementById("weeklyGoalMinutesInput").value, 10) || DEFAULT_WEEKLY_GOAL_MINUTES);
+      Storage.saveSettings({ weeklyGoalMode: mode, weeklyGoalSessions: sessions, weeklyGoalMinutes: minutes });
+      showToast("Wochenziel gespeichert");
     });
 
     document.getElementById("exportAllBtn").addEventListener("click", () => {

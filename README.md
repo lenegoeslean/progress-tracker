@@ -127,6 +127,12 @@ kannst du auch Aktivitäten eintragen, die nicht in der festen Liste
 stehen – inklusive Zeit/Kalorien und Anzeige in Liste, Wochen-/
 Monatsübersicht sowie im CSV-Export.
 
+Jede eingetragene Aktivität lässt sich über das ✎-Symbol direkt bearbeiten
+(z. B. um nur die Kalorienzahl nachträglich zu ändern) – das Formular
+füllt sich mit den vorhandenen Werten, du musst nicht mehr löschen und
+neu eintragen. Über „Bearbeiten abbrechen" kommst du ohne Speichern
+zurück in den normalen Eintragen-Modus.
+
 ## 6. Tagesziele
 
 Auf der Heute- (und Kalender-)Seite gibt es automatische Tagesziele:
@@ -180,6 +186,10 @@ zusätzlichen Speicherort.
 - **Tagesziele anpassen**: eigenes Schritte-Ziel und eigenes Wasser-Ziel
   (in ml) eintragen und mit „Speichern" übernehmen – wirkt sich sofort auf
   Heute, Kalender sowie die Fortschrittsanzeigen aus.
+- **Wochenziel festlegen**: Wähle zwischen „Anzahl Trainingseinheiten"
+  (Standard: 4 pro Woche) und „Aktive Minuten" (Standard: 150 pro Woche),
+  oder stelle das Wochenziel ganz ab. Das Ziel erscheint dann oben im Tab
+  „Woche" als Fortschrittsbalken mit Hinweis, sobald du es erreicht hast.
 - **Daten sichern (Backup)**: Der Button „Backup exportieren" lädt eine
   JSON-Datei mit allen deinen Daten (Trainings, Wasser, Challenges,
   Gewicht, Einstellungen) herunter – zusätzlich zum CSV-Export in „Woche".
