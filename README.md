@@ -38,8 +38,25 @@ auf GitHub hochlädst.
 3. Wähle **„Zum Home-Bildschirm"**.
 4. Bestätige mit **„Hinzufügen"**.
 
-Jetzt hast du ein lenegoeslean-Icon auf deinem Home-Bildschirm, das sich wie
-eine normale App öffnet (ohne Safari-Adressleiste).
+Jetzt hast du ein lenegoeslean-Icon (die Giraffe) auf deinem Home-Bildschirm,
+das sich wie eine normale App öffnet (ohne Safari-Adressleiste).
+
+**Warum sehe ich beim „Zum Home-Bildschirm hinzufügen" evtl. noch kein
+eigenes Icon?**
+
+- Am häufigsten liegt es daran, dass die App noch nicht über die echte
+  GitHub-Pages-Adresse geöffnet wurde (z. B. nur lokal als Datei geöffnet,
+  oder die `icons/`-Dateien wurden nicht mit hochgeladen). Prüfe, dass der
+  Ordner `icons/` komplett im Repository liegt und lade die Seite in Safari
+  einmal frisch über die `https://…github.io/…`-Adresse.
+- Im Safari-Dialog „Zum Home-Bildschirm hinzufügen" zeigt die Vorschau oben
+  manchmal kurzzeitig einen Screenshot der Seite statt des Icons – das ist
+  nur die Dialog-Vorschau. Das eigentliche Icon auf deinem Home-Bildschirm
+  ist danach trotzdem die Giraffe.
+- Falls du die App vorher schon einmal (z. B. als FitPaw) hinzugefügt
+  hattest: lösche das alte Icon vom Home-Bildschirm und füge die Seite
+  erneut hinzu, damit iOS das neue Icon lädt (iOS cacht das Icon pro
+  hinzugefügtem Eintrag).
 
 ## 3. Updates ausrollen
 
@@ -52,6 +69,18 @@ neu – du musst nichts weiter tun.
 > Hinweis: iOS prüft Service-Worker-Updates nur, wenn die App aktiv
 > geöffnet wird. Solltest du eine Änderung mal nicht sofort sehen, schließe
 > die App komplett (im App-Wechsler nach oben wischen) und öffne sie erneut.
+
+**Bleiben meine Daten (Workouts, Gewicht, Fotos …) bei einem Update
+erhalten?** Ja, automatisch – du musst dafür nichts einstellen. Der
+Service Worker aktualisiert nur die App-Dateien (HTML/JS/Icons), niemals
+deine gespeicherten Daten. Deine Trainings-, Wasser-, Challenge- und
+Gewichtsdaten liegen im `localStorage` deines iPhones, deine Fotos in
+IndexedDB – beides ist komplett getrennt vom Service-Worker-Cache und wird
+bei einem Update nie gelöscht oder überschrieben. Wichtig ist nur, dass du
+immer **dieselbe GitHub-Pages-Adresse** (also denselben Repository-Namen)
+weiter benutzt – Browser speichern Daten pro Adresse. Solange du den
+Repo-Namen nicht änderst, bleiben alle Daten bei jedem zukünftigen Update
+erhalten.
 
 ## 4. Wichtig: Datensicherung
 
@@ -73,7 +102,26 @@ Jede Sportart hat eine eigene Pastellfarbe und ein Tier-Icon:
 🐝 Cycling · 🦈 Schwimmen · 🐻 Home-Workout · 🐒 Hula-Hoop ·
 🫍 Pilates · 🦒 Reformer-Pilates · 🐼 Rest-Day
 
-## 6. Trends-Tab
+## 6. Tagesziele
+
+Auf der Heute- (und Kalender-)Seite gibt es jetzt automatische Tagesziele:
+
+- **10.000 Schritte**: wird automatisch als erreicht angezeigt, sobald du
+  10.000 oder mehr Schritte einträgst – keine weitere Aktion nötig.
+- **2 Liter Wasser**: kannst du in 250-ml-Schritten über die `+`/`−`-Buttons
+  eintragen, oder direkt über die Checkbox „Ziel erreicht" komplett
+  abhaken (setzt den Wert auf 2.000 ml; erneutes Abwählen setzt ihn wieder
+  auf 0 ml zurück).
+
+## 7. Gewicht-Tab
+
+Im Tab „Gewicht" kannst du dein Gewicht für ein beliebiges Datum eintragen
+(auch rückwirkend). Du siehst dort dein aktuelles Gewicht, die Veränderung
+der letzten 30 Tage, den Gesamtverlauf seit deinem ersten Eintrag sowie ein
+Diagramm, sobald mindestens zwei Einträge vorhanden sind. Auch diese Daten
+bleiben rein lokal auf deinem iPhone gespeichert.
+
+## 8. Trends-Tab
 
 Im Tab „Trends" siehst du automatisch berechnete Auswertungen auf Basis
 deiner bisherigen Einträge: aktuelle Woche im Vergleich zur Vorwoche,
@@ -87,8 +135,8 @@ zusätzlichen Speicherort.
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
 
-- Gewicht/Maße-Tracking mit eigenem Verlauf im Trends-Tab
-- Wochenziele (z. B. Schritte- oder Minutenziel) mit Fortschrittsanzeige
+- Zusätzliche Körpermaße (z. B. Taille, Hüfte) mit eigenem Verlauf
+- Individuell einstellbare Ziele (z. B. eigenes Schritte- oder Wasserziel statt der festen 10.000/2 L)
 - Erinnerungen/Push-Benachrichtigungen (auf iOS aktuell technisch eingeschränkt)
 - Passwortschutz oder Face-ID-Sperre für die App
 - Motivierende Kurznachrichten/Badges bei Streaks oder erreichten Zielen

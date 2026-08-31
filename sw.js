@@ -8,7 +8,7 @@
    Version aus dem Cache verwendet. So bleibt die App auch offline
    nutzbar, ist aber online immer aktuell. */
 
-const CACHE_NAME = "lenegoeslean-cache-v2";
+const CACHE_NAME = "lenegoeslean-cache-v3";
 const APP_SHELL = [
   "./",
   "./index.html",

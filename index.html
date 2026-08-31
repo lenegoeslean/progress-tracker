@@ -148,13 +148,16 @@
     backdrop-filter:blur(10px);
     border-top:1px solid var(--border);
     display:flex;
+    overflow-x:auto;
+    scrollbar-width:none; -ms-overflow-style:none;
     padding-bottom:var(--safe-bottom);
   }
+  nav.tabbar::-webkit-scrollbar{display:none;}
   nav.tabbar button{
-    flex:1; min-width:0; background:none; border:none; padding:9px 1px 8px;
+    flex:1 0 auto; min-width:58px; background:none; border:none; padding:9px 4px 8px;
     display:flex; flex-direction:column; align-items:center; gap:3px;
     color:var(--text-muted); font-size:9.5px; font-weight:600;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap;
   }
   nav.tabbar button .dot{width:5px; height:5px; border-radius:50%; background:transparent;}
   nav.tabbar button.active{color:var(--accent);}
@@ -239,6 +242,11 @@
   .week-dot .circle.done{background:var(--accent); border-color:var(--accent); color:#fff;}
   .week-dot.today .circle{border-color:var(--accent-dark);}
 
+  .stepper-btn{width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:#fff; color:var(--accent-dark); font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0;}
+  .goal-caption{font-size:12px; color:var(--text-muted); font-weight:600;}
+  .chart-card svg{width:100%; height:auto; display:block;}
+  .chart-empty{color:var(--text-muted); font-size:13px; text-align:center; padding:24px 8px;}
+
   .toast{
     position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
     background:var(--text); color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; font-weight:600;
@@ -271,6 +279,7 @@
     <section class="tab-panel" id="tab-fotos"></section>
     <section class="tab-panel" id="tab-challenge"></section>
     <section class="tab-panel" id="tab-trends"></section>
+    <section class="tab-panel" id="tab-gewicht"></section>
   </main>
 
   <nav class="tabbar">
@@ -281,6 +290,7 @@
     <button data-tab="fotos"><span class="dot"></span>Fotos</button>
     <button data-tab="challenge"><span class="dot"></span>Challenge</button>
     <button data-tab="trends"><span class="dot"></span>Trends</button>
+    <button data-tab="gewicht"><span class="dot"></span>Gewicht</button>
   </nav>
 </div>
 

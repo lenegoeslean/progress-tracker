@@ -31,6 +31,10 @@
     restday:        { label: "Rest-Day",        icon: "🐼", bg: "#ECEAFB", fg: "#6B5FBD", fields: [] }
   };
 
+  const STEPS_GOAL = 10000;
+  const WATER_GOAL_ML = 2000;
+  const WATER_STEP_ML = 250;
+
   const FIELD_META = {
     pace:     { label: "Pace",     unit: "min/km", type: "text",   placeholder: "z. B. 5:30" },
     distanz:  { label: "Distanz",  unit: "km",      type: "number", step: "0.01", placeholder: "z. B. 5.2" },
@@ -103,6 +107,7 @@
       }
       if (!this._cache.entries) this._cache.entries = {};
       if (!this._cache.challenges) this._cache.challenges = {};
+      if (!this._cache.weights) this._cache.weights = [];
       return this._cache;
     },
     save() {
@@ -115,7 +120,7 @@
     },
     getEntry(dateISO) {
       const data = this.load();
-      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false };
+      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false, water: 0 };
     },
     setEntry(dateISO, entry) {
       const data = this.load();
@@ -134,6 +139,22 @@
     setChallengeText(wKey, text) {
       const data = this.load();
       data.challenges[wKey] = Object.assign({}, data.challenges[wKey], { text });
+      this.save();
+    },
+    getWeights() {
+      const data = this.load();
+      return data.weights.slice().sort((a, b) => a.date.localeCompare(b.date));
+    },
+    addWeight(date, kg) {
+      const data = this.load();
+      const idx = data.weights.findIndex((w) => w.date === date);
+      if (idx >= 0) data.weights[idx] = Object.assign({}, data.weights[idx], { kg });
+      else data.weights.push({ id: genId(), date, kg });
+      this.save();
+    },
+    deleteWeight(id) {
+      const data = this.load();
+      data.weights = data.weights.filter((w) => w.id !== id);
       this.save();
     }
   };
@@ -284,10 +305,39 @@
          </div>`
       : `<div class="small muted">Noch keine Challenge für diese Woche festgelegt. <button class="btn-ghost btn-sm" data-goto="challenge" style="margin-left:4px;">Challenge festlegen</button></div>`;
 
+    const stepsVal = entry.steps || 0;
+    const stepsPct = Math.min(100, Math.round((stepsVal / STEPS_GOAL) * 100));
+    const stepsGoalHTML = `
+      <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${stepsPct}%"></div></div>
+      <div class="goal-caption">${stepsVal >= STEPS_GOAL ? "🎯 Tagesziel erreicht (10.000 Schritte)!" : `${stepsVal.toLocaleString("de-DE")} / ${STEPS_GOAL.toLocaleString("de-DE")} Schritten`}</div>
+    `;
+
+    const water = entry.water || 0;
+    const waterPct = Math.min(100, Math.round((water / WATER_GOAL_ML) * 100));
+
     return `
       <div class="card">
         <label class="field-label">Schritte</label>
         <input type="number" min="0" step="1" class="steps-input" placeholder="z. B. 8000" value="${entry.steps ?? ""}">
+        ${stepsGoalHTML}
+      </div>
+
+      <div class="card">
+        <div class="row-between">
+          <label class="field-label" style="margin-bottom:0;">💧 Wasser</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);">
+            Ziel erreicht
+            <input type="checkbox" class="water-check" ${water >= WATER_GOAL_ML ? "checked" : ""}>
+          </label>
+        </div>
+        <div class="progress-bar-lg" style="margin:10px 0 8px;"><div class="fill" style="width:${waterPct}%"></div></div>
+        <div class="row-between">
+          <span class="small muted">${water.toLocaleString("de-DE")} ml / ${WATER_GOAL_ML.toLocaleString("de-DE")} ml</span>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="stepper-btn water-minus" aria-label="250 ml entfernen">−</button>
+            <button type="button" class="stepper-btn water-plus" aria-label="250 ml hinzufügen">+</button>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -329,8 +379,31 @@
     stepsInput.addEventListener("change", () => {
       const v = stepsInput.value === "" ? null : Math.max(0, parseInt(stepsInput.value, 10) || 0);
       Storage.updateEntry(dateISO, (e) => { e.steps = v; });
-      showToast("Schritte gespeichert");
+      showToast(v >= STEPS_GOAL ? "🎯 Tagesziel erreicht!" : "Schritte gespeichert");
+      onChange();
     });
+
+    const waterCheck = container.querySelector(".water-check");
+    if (waterCheck) {
+      waterCheck.addEventListener("change", () => {
+        Storage.updateEntry(dateISO, (e) => { e.water = waterCheck.checked ? WATER_GOAL_ML : 0; });
+        onChange();
+      });
+    }
+    const waterPlus = container.querySelector(".water-plus");
+    if (waterPlus) {
+      waterPlus.addEventListener("click", () => {
+        Storage.updateEntry(dateISO, (e) => { e.water = (e.water || 0) + WATER_STEP_ML; });
+        onChange();
+      });
+    }
+    const waterMinus = container.querySelector(".water-minus");
+    if (waterMinus) {
+      waterMinus.addEventListener("click", () => {
+        Storage.updateEntry(dateISO, (e) => { e.water = Math.max(0, (e.water || 0) - WATER_STEP_ML); });
+        onChange();
+      });
+    }
 
     const challengeCheck = container.querySelector(".challenge-check");
     if (challengeCheck) {
@@ -989,15 +1062,135 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Tab: Gewicht                                                       */
+  /* ---------------------------------------------------------------- */
+
+  function buildWeightChartSVG(weights) {
+    if (weights.length < 2) return null;
+    const w = 300, h = 140, padX = 10, padY = 16;
+    const values = weights.map((p) => p.kg);
+    const min = Math.min(...values), max = Math.max(...values);
+    const range = (max - min) || 1;
+    const stepX = weights.length > 1 ? (w - padX * 2) / (weights.length - 1) : 0;
+    const points = weights.map((p, i) => ({
+      x: padX + i * stepX,
+      y: padY + (h - padY * 2) * (1 - (p.kg - min) / range)
+    }));
+    const pathD = points.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + "," + p.y.toFixed(1)).join(" ");
+    const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#FF4D8D"/>`).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <text x="${padX}" y="12" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${max.toFixed(1)} kg</text>
+      <text x="${padX}" y="${h - 4}" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${min.toFixed(1)} kg</text>
+      <path d="${pathD}" fill="none" stroke="#FF4D8D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg>`;
+  }
+
+  function findNearestWeightBefore(weights, isoDate) {
+    let best = null;
+    weights.forEach((w) => {
+      if (w.date <= isoDate && (!best || w.date > best.date)) best = w;
+    });
+    return best;
+  }
+
+  function renderGewicht() {
+    const container = document.getElementById("tab-gewicht");
+    const weights = Storage.getWeights();
+    const todayISO = toISO(new Date());
+    const latest = weights.length ? weights[weights.length - 1] : null;
+    const first = weights.length ? weights[0] : null;
+
+    let statsHTML = `<div class="empty-hint">Noch kein Gewicht erfasst. Trag dein erstes Gewicht unten ein.</div>`;
+    if (latest) {
+      const totalChange = first && first.id !== latest.id ? latest.kg - first.kg : null;
+      const thirtyDaysAgoISO = toISO(addDays(fromISO(latest.date), -30));
+      const refPoint = findNearestWeightBefore(weights.filter((w) => w.date !== latest.date), thirtyDaysAgoISO) || findNearestWeightBefore(weights.filter((w) => w.date !== latest.date), latest.date);
+      const monthChange = refPoint ? latest.kg - refPoint.kg : null;
+      const fmtChange = (v) => (v == null ? "–" : `${v > 0 ? "+" : ""}${v.toFixed(1)} kg`);
+      statsHTML = `
+        <div class="stat-grid" style="margin-bottom:0;">
+          <div class="stat-box"><div class="stat-value">${latest.kg.toFixed(1)} kg</div><div class="stat-label">AKTUELLES GEWICHT</div></div>
+          <div class="stat-box"><div class="stat-value">${fmtChange(monthChange)}</div><div class="stat-label">LETZTE 30 TAGE</div></div>
+        </div>
+        <div class="small muted" style="margin-top:12px;">Gesamtverlauf seit ${formatShortDate(fromISO(first.date))}: <strong>${fmtChange(totalChange)}</strong></div>
+      `;
+    }
+
+    const chartSVG = buildWeightChartSVG(weights);
+    const chartHTML = chartSVG ? chartSVG : `<div class="chart-empty">Sobald mindestens 2 Einträge vorhanden sind, siehst du hier den Verlauf als Diagramm.</div>`;
+
+    const historyRows = weights.length
+      ? weights.slice().reverse().map((w) => `
+        <div class="type-row">
+          <span class="small">${formatWeekdayDate(fromISO(w.date))}</span>
+          <span style="display:flex; align-items:center; gap:10px;">
+            <strong>${w.kg.toFixed(1)} kg</strong>
+            <button class="del-btn" data-del-weight="${w.id}" aria-label="Löschen">✕</button>
+          </span>
+        </div>`).join("")
+      : `<div class="empty-hint">Noch keine Einträge.</div>`;
+
+    container.innerHTML = `
+      <h2 class="section-title" style="margin-top:0;">Gewicht</h2>
+      <div class="card">${statsHTML}</div>
+
+      <h2 class="section-title">Verlauf</h2>
+      <div class="card chart-card">${chartHTML}</div>
+
+      <h2 class="section-title">Eintragen</h2>
+      <div class="card">
+        <form id="weightForm">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Datum</label>
+              <input type="date" id="weightDate" value="${todayISO}" max="${todayISO}">
+            </div>
+            <div class="field">
+              <label class="field-label">Gewicht (kg)</label>
+              <input type="number" id="weightInput" step="0.1" min="0" placeholder="z. B. 68.4">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Speichern</button>
+        </form>
+      </div>
+
+      <h2 class="section-title">Einträge</h2>
+      <div class="card">${historyRows}</div>
+    `;
+
+    document.getElementById("weightForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const dateVal = document.getElementById("weightDate").value || todayISO;
+      const kgVal = parseFloat(document.getElementById("weightInput").value);
+      if (!kgVal || kgVal <= 0) { showToast("Bitte ein gültiges Gewicht eingeben"); return; }
+      Storage.addWeight(dateVal, kgVal);
+      showToast("Gewicht gespeichert");
+      renderGewicht();
+    });
+
+    container.querySelectorAll("[data-del-weight]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        Storage.deleteWeight(btn.getAttribute("data-del-weight"));
+        renderGewicht();
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Tab-Steuerung                                                      */
   /* ---------------------------------------------------------------- */
 
-  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends };
+  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht };
 
   function switchTab(tab) {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
     document.getElementById("tab-" + tab).classList.add("active");
-    document.querySelectorAll("nav.tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll("nav.tabbar button").forEach((b) => {
+      const active = b.dataset.tab === tab;
+      b.classList.toggle("active", active);
+      if (active) b.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    });
     window.scrollTo(0, 0);
     if (renderers[tab]) renderers[tab]();
   }
