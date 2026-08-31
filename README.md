@@ -44,19 +44,37 @@ das sich wie eine normale App öffnet (ohne Safari-Adressleiste).
 **Warum sehe ich beim „Zum Home-Bildschirm hinzufügen" evtl. noch kein
 eigenes Icon?**
 
-- Am häufigsten liegt es daran, dass die App noch nicht über die echte
-  GitHub-Pages-Adresse geöffnet wurde (z. B. nur lokal als Datei geöffnet,
-  oder die `icons/`-Dateien wurden nicht mit hochgeladen). Prüfe, dass der
-  Ordner `icons/` komplett im Repository liegt und lade die Seite in Safari
-  einmal frisch über die `https://…github.io/…`-Adresse.
-- Im Safari-Dialog „Zum Home-Bildschirm hinzufügen" zeigt die Vorschau oben
-  manchmal kurzzeitig einen Screenshot der Seite statt des Icons – das ist
-  nur die Dialog-Vorschau. Das eigentliche Icon auf deinem Home-Bildschirm
-  ist danach trotzdem die Giraffe.
-- Falls du die App vorher schon einmal (z. B. als FitPaw) hinzugefügt
-  hattest: lösche das alte Icon vom Home-Bildschirm und füge die Seite
-  erneut hinzu, damit iOS das neue Icon lädt (iOS cacht das Icon pro
-  hinzugefügtem Eintrag).
+Der mit Abstand häufigste Grund: Die Seite wurde **nicht über die echte
+GitHub-Pages-Adresse** geöffnet, sondern z. B. direkt als Datei (aus den
+Dateien, per AirDrop oder als Chat-Anhang). Das erkennst du so: Schau oben
+in Safari in die Adressleiste. Steht dort etwas wie
+`https://dein-name.github.io/lenegoeslean/` → alles gut, das ist die
+richtige Adresse. Steht dort stattdessen `file://…` oder gar nichts
+Lesbares → genau das ist das Problem. In diesem Fall funktionieren weder
+Icon noch Auto-Update noch das Speichern der Daten zuverlässig, weil das
+alles eine „echte" Webadresse braucht, keine lokale Datei.
+
+Prüfe daher der Reihe nach:
+
+1. Liegt der Ordner `icons/` **komplett** (alle 5 PNG-Dateien) im
+   GitHub-Repository, auf derselben Ebene wie `index.html`?
+2. Ist unter **Settings → Pages** im Repository eine grüne Meldung „Your
+   site is live at https://…" zu sehen?
+3. Öffnest du genau diese `https://…github.io/…`-Adresse in Safari (nicht
+   eine `file://`-Adresse, nicht über die GitHub-App, nicht über einen
+   Datei-Anhang)?
+4. Falls du die App vorher schon einmal (z. B. als FitPaw) hinzugefügt
+   hattest: lösche das alte Icon vom Home-Bildschirm und füge die Seite
+   über die `https://…`-Adresse erneut hinzu, damit iOS das neue Icon lädt
+   (iOS cacht das Icon pro hinzugefügtem Eintrag).
+5. Im Safari-Dialog „Zum Home-Bildschirm hinzufügen" zeigt die Vorschau
+   oben manchmal kurzzeitig einen Screenshot der Seite statt des Icons –
+   das ist nur die Dialog-Vorschau, keine Fehlfunktion. Das eigentliche
+   Icon auf dem Home-Bildschirm ist danach trotzdem die Giraffe.
+
+Wenn du magst, schick mir kurz die genaue Adresse, die bei dir in der
+Safari-Adressleiste steht, wenn du die App öffnest – dann kann ich gezielt
+sagen, woran es liegt.
 
 ## 3. Updates ausrollen
 
@@ -100,18 +118,29 @@ Jede Sportart hat eine eigene Pastellfarbe und ein Tier-Icon:
 
 🐇 Joggen · 🦊 Incline-Walk · 🦖 Inline-Skaten · 🦁 Zirkel-Training ·
 🐝 Cycling · 🦈 Schwimmen · 🐻 Home-Workout · 🐒 Hula-Hoop ·
-🫍 Pilates · 🦒 Reformer-Pilates · 🐼 Rest-Day
+🫍 Pilates · 🦒 Reformer-Pilates · 🐤 Padel · 🐼 Rest-Day
+
+Dazu gibt es jetzt **🦄 Sonstiges**: Wählst du diese Option im
+Sport-Dropdown, erscheint ein zusätzliches Textfeld, in das du einen
+eigenen Namen eintragen kannst (z. B. „Klettern" oder „Tanzen"). So
+kannst du auch Aktivitäten eintragen, die nicht in der festen Liste
+stehen – inklusive Zeit/Kalorien und Anzeige in Liste, Wochen-/
+Monatsübersicht sowie im CSV-Export.
 
 ## 6. Tagesziele
 
-Auf der Heute- (und Kalender-)Seite gibt es jetzt automatische Tagesziele:
+Auf der Heute- (und Kalender-)Seite gibt es automatische Tagesziele:
 
-- **10.000 Schritte**: wird automatisch als erreicht angezeigt, sobald du
-  10.000 oder mehr Schritte einträgst – keine weitere Aktion nötig.
-- **2 Liter Wasser**: kannst du in 250-ml-Schritten über die `+`/`−`-Buttons
-  eintragen, oder direkt über die Checkbox „Ziel erreicht" komplett
-  abhaken (setzt den Wert auf 2.000 ml; erneutes Abwählen setzt ihn wieder
-  auf 0 ml zurück).
+- **Schritte** (Standard: 10.000): wird automatisch als erreicht angezeigt,
+  sobald du dein Ziel oder mehr Schritte einträgst – keine weitere Aktion
+  nötig.
+- **Wasser** (Standard: 2 Liter): kannst du in 250-ml-Schritten über die
+  `+`/`−`-Buttons eintragen, oder direkt über die Checkbox „Ziel erreicht"
+  komplett abhaken (setzt den Wert auf dein Wasserziel; erneutes Abwählen
+  setzt ihn wieder auf 0 ml zurück).
+
+Beide Ziele kannst du dir im Tab **Einstellungen** individuell anpassen
+(siehe Abschnitt 9).
 
 ## 7. Gewicht-Tab
 
@@ -131,12 +160,49 @@ aktuelle & längste Aktiv-Serie) sowie deine beliebtesten Sportarten. Alles
 wird live aus deinen lokal gespeicherten Daten berechnet, es gibt keinen
 zusätzlichen Speicherort.
 
+## 9. Einstellungen-Tab
+
+Über das ⚙️-Symbol oben rechts im Header öffnest du den Tab
+**Einstellungen**. Dort kannst du:
+
+- **Farbdesign wählen**: fünf Farboptionen stehen zur Auswahl – Pink
+  (Standard), Lavendel, Minze, Pfirsich und Himmelblau. Ein Tipp auf eine
+  Farbe wechselt das komplette App-Design sofort (Hintergrund, Akzentfarbe,
+  Diagramme, Heatmap …) und wird dauerhaft gespeichert.
+- **Tagesziele anpassen**: eigenes Schritte-Ziel und eigenes Wasser-Ziel
+  (in ml) eintragen und mit „Speichern" übernehmen – wirkt sich sofort auf
+  Heute, Kalender sowie die Fortschrittsanzeigen aus.
+- **Daten sichern (Backup)**: Der Button „Backup exportieren" lädt eine
+  JSON-Datei mit allen deinen Daten (Trainings, Wasser, Challenges,
+  Gewicht, Einstellungen) herunter – zusätzlich zum CSV-Export in „Woche".
+  Über „Backup importieren" kannst du eine zuvor exportierte JSON-Datei
+  wieder einspielen (z. B. nach einem Gerätewechsel oder wenn du
+  Website-Daten gelöscht hast).
+- **Alle Trainingsdaten zurücksetzen**: löscht Trainings, Wasser,
+  Challenges und Gewichtseinträge auf diesem Gerät unwiderruflich (nach
+  Sicherheitsabfrage) – deine Einstellungen (Farbe, Ziele) bleiben dabei
+  erhalten.
+
+## 10. Coolere Wochen- und Monatsübersicht
+
+Die Tabs „Woche" und „Monat" wurden grafisch überarbeitet:
+
+- Eine **Aktivitäts-Mix-Leiste** zeigt auf einen Blick, wie sich deine
+  Trainingszeit auf die einzelnen Sportarten verteilt (farblich nach
+  Sportart).
+- Ein **Balkendiagramm** stellt deine Schritte pro Tag der Woche
+  übersichtlich als Säulen dar (der heutige Tag ist hervorgehoben).
+- Im Tab „Monat" gibt es zusätzlich eine **Kalender-Heatmap**: Jeder Tag
+  des Monats wird als Kachel eingefärbt – je dunkler/intensiver, desto
+  näher warst du an deinem Schritteziel. So siehst du auf einen Blick,
+  wie aktiv dein Monat war.
+- Alle Diagramme passen sich automatisch an dein gewähltes Farbdesign an.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
 
 - Zusätzliche Körpermaße (z. B. Taille, Hüfte) mit eigenem Verlauf
-- Individuell einstellbare Ziele (z. B. eigenes Schritte- oder Wasserziel statt der festen 10.000/2 L)
 - Erinnerungen/Push-Benachrichtigungen (auf iOS aktuell technisch eingeschränkt)
 - Passwortschutz oder Face-ID-Sperre für die App
 - Motivierende Kurznachrichten/Badges bei Streaks oder erreichten Zielen

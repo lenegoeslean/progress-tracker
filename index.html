@@ -247,6 +247,38 @@
   .chart-card svg{width:100%; height:auto; display:block;}
   .chart-empty{color:var(--text-muted); font-size:13px; text-align:center; padding:24px 8px;}
 
+  /* activity mix bar */
+  .mix-bar{display:flex; width:100%; height:14px; border-radius:8px; overflow:hidden; background:var(--accent-soft-2);}
+  .mix-bar > div{height:100%; min-width:3px;}
+
+  /* vertical bar chart (Woche) */
+  .vbar-chart{display:flex; align-items:stretch; gap:8px; height:150px;}
+  .vbar-col{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0;}
+  .vbar-value{font-size:9px; color:var(--text-muted); font-weight:700; height:11px; white-space:nowrap;}
+  .vbar-track{width:100%; max-width:28px; flex:1; display:flex; align-items:flex-end; background:var(--accent-soft-2); border-radius:7px; overflow:hidden;}
+  .vbar-fill{width:100%; background:var(--accent); border-radius:7px 7px 0 0; transition:height .3s ease;}
+  .vbar-fill.today{background:var(--accent-dark);}
+  .vbar-label{font-size:10.5px; color:var(--text-muted); font-weight:700;}
+
+  /* month heatmap */
+  .heat-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+  .heat-cell{aspect-ratio:1/1; border-radius:6px;}
+  .heat-cell.other{opacity:0.35;}
+  .heat-cell.l0{background:var(--accent-soft-2);}
+  .heat-cell.l1{background:color-mix(in srgb, var(--accent) 28%, white);}
+  .heat-cell.l2{background:color-mix(in srgb, var(--accent) 58%, white);}
+  .heat-cell.l3{background:var(--accent);}
+  .heat-legend-dot{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .heat-legend-dot.l0{background:var(--accent-soft-2);}
+  .heat-legend-dot.l1{background:color-mix(in srgb, var(--accent) 28%, white);}
+  .heat-legend-dot.l2{background:color-mix(in srgb, var(--accent) 58%, white);}
+  .heat-legend-dot.l3{background:var(--accent);}
+
+  /* settings: theme swatches */
+  .theme-swatch-row{display:flex; gap:14px; flex-wrap:wrap;}
+  .theme-swatch{width:42px; height:42px; border-radius:50%; border:none; padding:0; position:relative; box-shadow:0 0 0 1px var(--border) inset;}
+  .theme-swatch.active::after{content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:16px; text-shadow:0 1px 2px rgba(0,0,0,0.35);}
+
   .toast{
     position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
     background:var(--text); color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; font-weight:600;
@@ -268,7 +300,10 @@
 <div id="app">
   <header class="topbar">
     <div class="brand"><span class="paw">🦒</span> lenegoeslean</div>
-    <div class="today-pill" id="topbarDate"></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="today-pill" id="topbarDate"></div>
+      <button id="settingsBtn" class="btn-icon" aria-label="Einstellungen" style="width:30px; height:30px; font-size:15px;">⚙️</button>
+    </div>
   </header>
 
   <main>
@@ -280,6 +315,7 @@
     <section class="tab-panel" id="tab-challenge"></section>
     <section class="tab-panel" id="tab-trends"></section>
     <section class="tab-panel" id="tab-gewicht"></section>
+    <section class="tab-panel" id="tab-einstellungen"></section>
   </main>
 
   <nav class="tabbar">

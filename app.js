@@ -28,11 +28,13 @@
     hulahoop:       { label: "Hula-Hoop",        icon: "🐒", bg: "#FFE7CE", fg: "#B87434", fields: ["zeit", "kalorien"] },
     pilates:        { label: "Pilates",          icon: "🫍", bg: "#E9F7EF", fg: "#3F9767", fields: ["zeit", "kalorien"] },
     reformerpilates:{ label: "Reformer-Pilates", icon: "🦒", bg: "#F3E3FF", fg: "#8C4FC9", fields: ["zeit", "kalorien"] },
+    padel:          { label: "Padel",            icon: "🐤", bg: "#FFF6C7", fg: "#B8960C", fields: ["zeit", "kalorien"] },
+    custom:         { label: "Sonstiges",        icon: "🦄", bg: "#F1E9FF", fg: "#7C5CBF", fields: ["zeit", "kalorien"], custom: true },
     restday:        { label: "Rest-Day",        icon: "🐼", bg: "#ECEAFB", fg: "#6B5FBD", fields: [] }
   };
 
-  const STEPS_GOAL = 10000;
-  const WATER_GOAL_ML = 2000;
+  const DEFAULT_STEPS_GOAL = 10000;
+  const DEFAULT_WATER_GOAL_ML = 2000;
   const WATER_STEP_ML = 250;
 
   const FIELD_META = {
@@ -41,6 +43,25 @@
     zeit:     { label: "Zeit",     unit: "min",     type: "number", step: "1",    placeholder: "z. B. 30" },
     kalorien: { label: "Kalorien", unit: "kcal",    type: "number", step: "1",    placeholder: "z. B. 250" }
   };
+
+  const THEMES = {
+    pink:     { name: "Pink",         swatch: "#FF4D8D", bg: "#FFF6F9", accent: "#FF4D8D", accentDark: "#E23E76", accentSoft: "#FFDCEA", accentSoft2: "#FFEEF4", border: "#FBE1EC" },
+    lavender: { name: "Flieder",      swatch: "#8B5CF6", bg: "#F8F6FF", accent: "#8B5CF6", accentDark: "#6D3FD1", accentSoft: "#E4DBFF", accentSoft2: "#F1ECFF", border: "#EDE7FB" },
+    mint:     { name: "Minze",        swatch: "#2FAE83", bg: "#F2FBF7", accent: "#2FAE83", accentDark: "#1F8F6A", accentSoft: "#CBF0E0", accentSoft2: "#E3F8EF", border: "#DFF3EA" },
+    peach:    { name: "Pfirsich",     swatch: "#FF8A4C", bg: "#FFF8F1", accent: "#FF8A4C", accentDark: "#E06B2C", accentSoft: "#FFDFC2", accentSoft2: "#FFEEDF", border: "#FBE7D6" },
+    sky:      { name: "Himmelblau",   swatch: "#3B9DE8", bg: "#F1F8FF", accent: "#3B9DE8", accentDark: "#2478C4", accentSoft: "#CFE9FF", accentSoft2: "#E6F4FF", border: "#DDEEFB" }
+  };
+
+  function applyTheme(key) {
+    const t = THEMES[key] || THEMES.pink;
+    const root = document.documentElement.style;
+    root.setProperty("--bg", t.bg);
+    root.setProperty("--accent", t.accent);
+    root.setProperty("--accent-dark", t.accentDark);
+    root.setProperty("--accent-soft", t.accentSoft);
+    root.setProperty("--accent-soft-2", t.accentSoft2);
+    root.setProperty("--border", t.border);
+  }
 
   /* ---------------------------------------------------------------- */
   /* Datum-Hilfsfunktionen                                             */
@@ -108,6 +129,7 @@
       if (!this._cache.entries) this._cache.entries = {};
       if (!this._cache.challenges) this._cache.challenges = {};
       if (!this._cache.weights) this._cache.weights = [];
+      if (!this._cache.settings) this._cache.settings = {};
       return this._cache;
     },
     save() {
@@ -156,8 +178,37 @@
       const data = this.load();
       data.weights = data.weights.filter((w) => w.id !== id);
       this.save();
+    },
+    getSettings() {
+      const data = this.load();
+      return Object.assign({ theme: "pink", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML }, data.settings);
+    },
+    saveSettings(patch) {
+      const data = this.load();
+      data.settings = Object.assign({}, data.settings, patch);
+      this.save();
+    },
+    exportAll() {
+      return JSON.stringify(this.load(), null, 2);
+    },
+    importAll(json) {
+      const parsed = JSON.parse(json);
+      if (!parsed || typeof parsed !== "object") throw new Error("Ungültiges Backup");
+      this._cache = parsed;
+      if (!this._cache.entries) this._cache.entries = {};
+      if (!this._cache.challenges) this._cache.challenges = {};
+      if (!this._cache.weights) this._cache.weights = [];
+      if (!this._cache.settings) this._cache.settings = {};
+      this.save();
+    },
+    resetTrackingData() {
+      const data = this.load();
+      this._cache = { entries: {}, challenges: {}, weights: [], settings: data.settings || {} };
+      this.save();
     }
   };
+
+  applyTheme(Storage.getSettings().theme);
 
   /* ---------------------------------------------------------------- */
   /* IndexedDB (Fotos)                                                  */
@@ -276,6 +327,7 @@
     const activityRows = entry.activities.length
       ? entry.activities.map((a) => {
           const sport = SPORTS[a.type] || SPORTS.restday;
+          const label = sport.custom && a.customName ? a.customName : sport.label;
           const statParts = sport.fields.map((f) => {
             if (a[f] === undefined || a[f] === "" || a[f] === null) return "";
             return `${a[f]}${FIELD_META[f].unit === "min/km" ? " min/km" : " " + FIELD_META[f].unit}`;
@@ -285,7 +337,7 @@
             <div class="info">
               <div class="icon-badge" style="background:${sport.bg}">${sport.icon}</div>
               <div>
-                <div>${esc(sport.label)}</div>
+                <div>${esc(label)}</div>
                 <div class="stats">${statParts || "&nbsp;"}</div>
               </div>
             </div>
@@ -305,15 +357,16 @@
          </div>`
       : `<div class="small muted">Noch keine Challenge für diese Woche festgelegt. <button class="btn-ghost btn-sm" data-goto="challenge" style="margin-left:4px;">Challenge festlegen</button></div>`;
 
+    const goals = Storage.getSettings();
     const stepsVal = entry.steps || 0;
-    const stepsPct = Math.min(100, Math.round((stepsVal / STEPS_GOAL) * 100));
+    const stepsPct = Math.min(100, Math.round((stepsVal / goals.stepsGoal) * 100));
     const stepsGoalHTML = `
       <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${stepsPct}%"></div></div>
-      <div class="goal-caption">${stepsVal >= STEPS_GOAL ? "🎯 Tagesziel erreicht (10.000 Schritte)!" : `${stepsVal.toLocaleString("de-DE")} / ${STEPS_GOAL.toLocaleString("de-DE")} Schritten`}</div>
+      <div class="goal-caption">${stepsVal >= goals.stepsGoal ? `🎯 Tagesziel erreicht (${goals.stepsGoal.toLocaleString("de-DE")} Schritte)!` : `${stepsVal.toLocaleString("de-DE")} / ${goals.stepsGoal.toLocaleString("de-DE")} Schritten`}</div>
     `;
 
     const water = entry.water || 0;
-    const waterPct = Math.min(100, Math.round((water / WATER_GOAL_ML) * 100));
+    const waterPct = Math.min(100, Math.round((water / goals.waterGoalMl) * 100));
 
     return `
       <div class="card">
@@ -327,12 +380,12 @@
           <label class="field-label" style="margin-bottom:0;">💧 Wasser</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);">
             Ziel erreicht
-            <input type="checkbox" class="water-check" ${water >= WATER_GOAL_ML ? "checked" : ""}>
+            <input type="checkbox" class="water-check" ${water >= goals.waterGoalMl ? "checked" : ""}>
           </label>
         </div>
         <div class="progress-bar-lg" style="margin:10px 0 8px;"><div class="fill" style="width:${waterPct}%"></div></div>
         <div class="row-between">
-          <span class="small muted">${water.toLocaleString("de-DE")} ml / ${WATER_GOAL_ML.toLocaleString("de-DE")} ml</span>
+          <span class="small muted">${water.toLocaleString("de-DE")} ml / ${goals.waterGoalMl.toLocaleString("de-DE")} ml</span>
           <div style="display:flex; gap:8px;">
             <button type="button" class="stepper-btn water-minus" aria-label="250 ml entfernen">−</button>
             <button type="button" class="stepper-btn water-plus" aria-label="250 ml hinzufügen">+</button>
@@ -362,31 +415,41 @@
 
   function renderDynamicFields(container, sportKey) {
     const sport = SPORTS[sportKey] || SPORTS.restday;
-    container.innerHTML = sport.fields.map((f) => {
+    if (sportKey === "restday") {
+      container.innerHTML = `<div class="small muted" style="grid-column:1/-1;padding:4px 0 2px;">Rest-Day – keine weiteren Angaben nötig. Gönn dir die Pause! 🐼</div>`;
+      return;
+    }
+    let html = "";
+    if (sport.custom) {
+      html += `<div class="field" style="grid-column:1/-1;">
+        <label class="field-label">Name der Aktivität</label>
+        <input type="text" placeholder="z. B. Klettern, Tanzen, Wandern …" data-field="customName">
+      </div>`;
+    }
+    html += sport.fields.map((f) => {
       const meta = FIELD_META[f];
       return `<div class="field">
         <label class="field-label">${meta.label} (${meta.unit})</label>
         <input type="${meta.type}" ${meta.step ? `step="${meta.step}"` : ""} placeholder="${meta.placeholder}" data-field="${f}">
       </div>`;
     }).join("");
-    if (!sport.fields.length) {
-      container.innerHTML = `<div class="small muted" style="grid-column:1/-1;padding:4px 0 2px;">Rest-Day – keine weiteren Angaben nötig. Gönn dir die Pause! 🐼</div>`;
-    }
+    container.innerHTML = html;
   }
 
   function bindEntryEditor(container, dateISO, onChange) {
+    const goals = Storage.getSettings();
     const stepsInput = container.querySelector(".steps-input");
     stepsInput.addEventListener("change", () => {
       const v = stepsInput.value === "" ? null : Math.max(0, parseInt(stepsInput.value, 10) || 0);
       Storage.updateEntry(dateISO, (e) => { e.steps = v; });
-      showToast(v >= STEPS_GOAL ? "🎯 Tagesziel erreicht!" : "Schritte gespeichert");
+      showToast(v >= goals.stepsGoal ? "🎯 Tagesziel erreicht!" : "Schritte gespeichert");
       onChange();
     });
 
     const waterCheck = container.querySelector(".water-check");
     if (waterCheck) {
       waterCheck.addEventListener("change", () => {
-        Storage.updateEntry(dateISO, (e) => { e.water = waterCheck.checked ? WATER_GOAL_ML : 0; });
+        Storage.updateEntry(dateISO, (e) => { e.water = waterCheck.checked ? goals.waterGoalMl : 0; });
         onChange();
       });
     }
@@ -434,6 +497,10 @@
       const type = sportSelect.value;
       const sport = SPORTS[type];
       const activity = { id: genId(), type };
+      if (sport.custom) {
+        const nameInput = dynamicFields.querySelector('[data-field="customName"]');
+        activity.customName = (nameInput && nameInput.value.trim()) || "Sonstiges";
+      }
       sport.fields.forEach((f) => {
         const input = dynamicFields.querySelector(`[data-field="${f}"]`);
         activity[f] = input ? input.value : "";
@@ -475,13 +542,43 @@
       const entry = Storage.getEntry(toISO(d));
       if (entry.steps) { steps += entry.steps; stepDays++; }
       entry.activities.forEach((a) => {
-        minutes += Number(a.zeit) || 0;
+        const m = Number(a.zeit) || 0;
+        minutes += m;
         calories += Number(a.kalorien) || 0;
         distance += Number(a.distanz) || 0;
-        byType[a.type] = (byType[a.type] || 0) + 1;
+        if (!byType[a.type]) byType[a.type] = { count: 0, minutes: 0 };
+        byType[a.type].count++;
+        byType[a.type].minutes += m || 1;
       });
     });
     return { days, steps, stepDays, minutes, calories, distance, byType };
+  }
+
+  function buildActivityMixBar(weights) {
+    const keys = Object.keys(weights).filter((k) => weights[k] > 0 && (SPORTS[k] || SPORTS.custom));
+    if (!keys.length) return "";
+    const segs = keys.map((k) => {
+      const s = SPORTS[k] || SPORTS.custom;
+      return `<div style="flex:${weights[k]} 0 0%; background:${s.fg};" title="${esc(s.label)}"></div>`;
+    }).join("");
+    return `<div class="mix-bar">${segs}</div>`;
+  }
+
+  function buildVerticalBarChart(days, getValue) {
+    const values = days.map(getValue);
+    const maxVal = Math.max(1000, ...values);
+    const today = new Date();
+    const cols = days.map((d, i) => {
+      const val = values[i];
+      const pct = val ? Math.max(4, Math.round((val / maxVal) * 100)) : 2;
+      const isToday = isSameDay(d, today);
+      return `<div class="vbar-col">
+        <div class="vbar-value">${val ? val.toLocaleString("de-DE") : ""}</div>
+        <div class="vbar-track"><div class="vbar-fill${isToday ? " today" : ""}" style="height:${pct}%"></div></div>
+        <div class="vbar-label">${WEEKDAYS_SHORT[(d.getDay() + 6) % 7]}</div>
+      </div>`;
+    }).join("");
+    return `<div class="vbar-chart">${cols}</div>`;
   }
 
   function renderWoche() {
@@ -490,24 +587,19 @@
     const weekEnd = addDays(weekStart, 6);
     const wKey = weekKey(wocheAnchor);
     const agg = weekAggregate(weekStart);
-    const maxSteps = Math.max(10000, ...agg.days.map((d) => Storage.getEntry(toISO(d)).steps || 0));
 
     const typeChips = Object.keys(agg.byType).length
       ? Object.keys(agg.byType).map((k) => {
-          const s = SPORTS[k];
-          return `<span class="chip" style="background:${s.bg};color:${s.fg};"><span class="emoji">${s.icon}</span>${s.label} × ${agg.byType[k]}</span>`;
+          const s = SPORTS[k] || SPORTS.custom;
+          return `<span class="chip" style="background:${s.bg};color:${s.fg};"><span class="emoji">${s.icon}</span>${s.label} × ${agg.byType[k].count}</span>`;
         }).join(" ")
       : `<span class="small muted">Noch keine Aktivitäten diese Woche.</span>`;
 
-    const barRows = agg.days.map((d) => {
-      const st = Storage.getEntry(toISO(d)).steps || 0;
-      const pct = Math.min(100, Math.round((st / maxSteps) * 100));
-      return `<div class="bar-row">
-        <div class="bar-label">${WEEKDAYS_SHORT[(d.getDay() + 6) % 7]}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-        <div class="bar-val">${st ? st.toLocaleString("de-DE") : "–"}</div>
-      </div>`;
-    }).join("");
+    const mixWeights = {};
+    Object.keys(agg.byType).forEach((k) => { mixWeights[k] = agg.byType[k].minutes; });
+    const mixBarHTML = buildActivityMixBar(mixWeights);
+
+    const stepsChart = buildVerticalBarChart(agg.days, (d) => Storage.getEntry(toISO(d)).steps || 0);
 
     container.innerHTML = `
       <div class="period-nav">
@@ -520,17 +612,20 @@
       </div>
 
       <div class="stat-grid">
-        <div class="stat-box"><div class="stat-value">${agg.minutes}</div><div class="stat-label">MINUTEN AKTIV</div></div>
-        <div class="stat-box"><div class="stat-value">${agg.calories}</div><div class="stat-label">KCAL VERBRANNT</div></div>
-        <div class="stat-box"><div class="stat-value">${agg.distance.toFixed(1)}</div><div class="stat-label">KM ZURÜCKGELEGT</div></div>
-        <div class="stat-box"><div class="stat-value">${agg.stepDays ? Math.round(agg.steps / agg.stepDays).toLocaleString("de-DE") : "–"}</div><div class="stat-label">Ø SCHRITTE / TAG</div></div>
+        <div class="stat-box"><div class="stat-value">${agg.minutes}</div><div class="stat-label">⏱ MINUTEN AKTIV</div></div>
+        <div class="stat-box"><div class="stat-value">${agg.calories}</div><div class="stat-label">🔥 KCAL VERBRANNT</div></div>
+        <div class="stat-box"><div class="stat-value">${agg.distance.toFixed(1)}</div><div class="stat-label">📍 KM ZURÜCKGELEGT</div></div>
+        <div class="stat-box"><div class="stat-value">${agg.stepDays ? Math.round(agg.steps / agg.stepDays).toLocaleString("de-DE") : "–"}</div><div class="stat-label">👟 Ø SCHRITTE / TAG</div></div>
       </div>
 
       <h2 class="section-title">Aktivitäten diese Woche</h2>
-      <div class="card">${typeChips}</div>
+      <div class="card">
+        ${mixBarHTML ? `<div style="margin-bottom:12px;">${mixBarHTML}</div>` : ""}
+        ${typeChips}
+      </div>
 
       <h2 class="section-title">Schritte pro Tag</h2>
-      <div class="card">${barRows}</div>
+      <div class="card">${stepsChart}</div>
 
       <h2 class="section-title">Daten exportieren</h2>
       <div class="card">
@@ -555,8 +650,9 @@
         rows.push([iso, wd, entry.steps ?? "", "", "", "", "", "", entry.challengeChecked ? "Ja" : "Nein"]);
       } else {
         entry.activities.forEach((a) => {
-          const sport = SPORTS[a.type];
-          rows.push([iso, wd, entry.steps ?? "", sport.label, a.pace ?? "", a.distanz ?? "", a.zeit ?? "", a.kalorien ?? "", entry.challengeChecked ? "Ja" : "Nein"]);
+          const sport = SPORTS[a.type] || SPORTS.custom;
+          const label = sport.custom && a.customName ? a.customName : sport.label;
+          rows.push([iso, wd, entry.steps ?? "", label, a.pace ?? "", a.distanz ?? "", a.zeit ?? "", a.kalorien ?? "", entry.challengeChecked ? "Ja" : "Nein"]);
         });
       }
     }
@@ -646,6 +742,36 @@
 
   let monatAnchor = new Date();
 
+  function dayIntensity(entry, stepsGoal) {
+    if (!entry) return 0;
+    const hasRest = entry.activities.some((a) => a.type === "restday");
+    const hasWorkout = entry.activities.some((a) => a.type !== "restday");
+    const steps = entry.steps || 0;
+    if (hasWorkout && steps >= stepsGoal) return 3;
+    if (hasWorkout || steps >= stepsGoal) return 2;
+    if (steps > 0 || hasRest) return 1;
+    return 0;
+  }
+
+  function buildMonthHeatmapHTML(year, month, stepsGoal) {
+    const dates = getMonthGridDates(year, month);
+    const cells = dates.map((d) => {
+      const inMonth = d.getMonth() === month;
+      const level = inMonth ? dayIntensity(Storage.getEntry(toISO(d)), stepsGoal) : 0;
+      return `<div class="heat-cell l${level}${inMonth ? "" : " other"}" title="${formatShortDate(d)}"></div>`;
+    }).join("");
+    return `
+      <div class="heat-grid">${cells}</div>
+      <div class="row-between small muted" style="margin-top:12px;">
+        <span>Weniger</span>
+        <div style="display:flex; gap:4px;">
+          <span class="heat-legend-dot l0"></span><span class="heat-legend-dot l1"></span><span class="heat-legend-dot l2"></span><span class="heat-legend-dot l3"></span>
+        </div>
+        <span>Mehr</span>
+      </div>
+    `;
+  }
+
   function renderMonat() {
     const container = document.getElementById("tab-monat");
     const year = monatAnchor.getFullYear(), month = monatAnchor.getMonth();
@@ -695,13 +821,20 @@
 
     const typeRows = Object.keys(byType).length
       ? Object.keys(byType).sort((a, b) => byType[b].count - byType[a].count).map((k) => {
-          const s = SPORTS[k];
+          const s = SPORTS[k] || SPORTS.custom;
           return `<div class="type-row">
             <span class="chip" style="background:${s.bg};color:${s.fg};"><span class="emoji">${s.icon}</span>${s.label}</span>
             <span class="small muted">${byType[k].count}× · ${byType[k].minutes} min · ${byType[k].calories} kcal</span>
           </div>`;
         }).join("")
       : `<div class="empty-hint">Noch keine Aktivitäten in diesem Monat.</div>`;
+
+    const mixWeights = {};
+    Object.keys(byType).forEach((k) => { mixWeights[k] = byType[k].minutes || byType[k].count; });
+    const mixBarHTML = buildActivityMixBar(mixWeights);
+
+    const stepsGoal = Storage.getSettings().stepsGoal;
+    const heatmapHTML = buildMonthHeatmapHTML(year, month, stepsGoal);
 
     container.innerHTML = `
       <div class="period-nav">
@@ -711,16 +844,22 @@
       </div>
 
       <div class="stat-grid">
-        <div class="stat-box"><div class="stat-value">${activeDays}/${daysInMonth}</div><div class="stat-label">AKTIVE TAGE</div></div>
-        <div class="stat-box"><div class="stat-value">${restDays}</div><div class="stat-label">REST-DAYS</div></div>
-        <div class="stat-box"><div class="stat-value">${minutes}</div><div class="stat-label">MINUTEN GESAMT</div></div>
-        <div class="stat-box"><div class="stat-value">${calories.toLocaleString("de-DE")}</div><div class="stat-label">KCAL GESAMT</div></div>
-        <div class="stat-box"><div class="stat-value">${distance.toFixed(1)} km</div><div class="stat-label">DISTANZ GESAMT</div></div>
-        <div class="stat-box"><div class="stat-value">${stepDays ? Math.round(steps / stepDays).toLocaleString("de-DE") : "–"}</div><div class="stat-label">Ø SCHRITTE / TAG</div></div>
+        <div class="stat-box"><div class="stat-value">${activeDays}/${daysInMonth}</div><div class="stat-label">✅ AKTIVE TAGE</div></div>
+        <div class="stat-box"><div class="stat-value">${restDays}</div><div class="stat-label">🐼 REST-DAYS</div></div>
+        <div class="stat-box"><div class="stat-value">${minutes}</div><div class="stat-label">⏱ MINUTEN GESAMT</div></div>
+        <div class="stat-box"><div class="stat-value">${calories.toLocaleString("de-DE")}</div><div class="stat-label">🔥 KCAL GESAMT</div></div>
+        <div class="stat-box"><div class="stat-value">${distance.toFixed(1)} km</div><div class="stat-label">📍 DISTANZ GESAMT</div></div>
+        <div class="stat-box"><div class="stat-value">${stepDays ? Math.round(steps / stepDays).toLocaleString("de-DE") : "–"}</div><div class="stat-label">👟 Ø SCHRITTE / TAG</div></div>
       </div>
 
+      <h2 class="section-title">Monats-Übersicht</h2>
+      <div class="card">${heatmapHTML}</div>
+
       <h2 class="section-title">Nach Sportart</h2>
-      <div class="card">${typeRows}</div>
+      <div class="card">
+        ${mixBarHTML ? `<div style="margin-bottom:14px;">${mixBarHTML}</div>` : ""}
+        ${typeRows}
+      </div>
 
       <h2 class="section-title">Wochen-Challenges</h2>
       <div class="card">
@@ -1178,10 +1317,118 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Tab: Einstellungen                                                 */
+  /* ---------------------------------------------------------------- */
+
+  function renderEinstellungen() {
+    const container = document.getElementById("tab-einstellungen");
+    const settings = Storage.getSettings();
+
+    const themeSwatches = Object.keys(THEMES).map((key) => {
+      const t = THEMES[key];
+      const active = settings.theme === key;
+      return `<button type="button" class="theme-swatch${active ? " active" : ""}" data-theme="${key}" style="background:${t.swatch};" aria-label="${t.name}"></button>`;
+    }).join("");
+
+    container.innerHTML = `
+      <h2 class="section-title" style="margin-top:0;">Einstellungen</h2>
+
+      <h2 class="section-title" style="margin-top:0;">Farbschema</h2>
+      <div class="card">
+        <div class="theme-swatch-row">${themeSwatches}</div>
+      </div>
+
+      <h2 class="section-title">Tagesziele</h2>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">Schritte-Ziel</label>
+          <input type="number" min="1000" step="500" id="goalStepsInput" value="${settings.stepsGoal}">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Wasser-Ziel (ml)</label>
+          <input type="number" min="250" step="250" id="goalWaterInput" value="${settings.waterGoalMl}">
+        </div>
+        <button class="btn btn-primary btn-block" id="saveGoalsBtn" style="margin-top:12px;">Ziele speichern</button>
+      </div>
+
+      <h2 class="section-title">Daten</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Sichere ein vollständiges Backup aller App-Daten (Workouts, Challenges, Gewicht, Einstellungen) als Datei, oder spiele ein zuvor gesichertes Backup wieder ein. Progress-Fotos sind hier nicht enthalten.</div>
+        <button class="btn btn-secondary btn-block" id="exportAllBtn">⤓ Backup exportieren</button>
+        <label class="btn btn-ghost btn-block" style="margin-top:10px; text-align:center; display:block; cursor:pointer;">
+          Backup importieren
+          <input type="file" accept="application/json" id="importInput" style="display:none;">
+        </label>
+        <button class="btn btn-ghost btn-block" id="resetBtn" style="margin-top:10px; color:#B5495A;">Trainings-, Challenge- &amp; Gewichtsdaten löschen</button>
+      </div>
+
+      <h2 class="section-title">Über die App</h2>
+      <div class="card small muted">
+        lenegoeslean · Alle Daten werden ausschließlich lokal auf diesem Gerät gespeichert.
+      </div>
+    `;
+
+    container.querySelectorAll(".theme-swatch").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-theme");
+        Storage.saveSettings({ theme: key });
+        applyTheme(key);
+        renderEinstellungen();
+      });
+    });
+
+    document.getElementById("saveGoalsBtn").addEventListener("click", () => {
+      const steps = Math.max(1000, parseInt(document.getElementById("goalStepsInput").value, 10) || DEFAULT_STEPS_GOAL);
+      const water = Math.max(250, parseInt(document.getElementById("goalWaterInput").value, 10) || DEFAULT_WATER_GOAL_ML);
+      Storage.saveSettings({ stepsGoal: steps, waterGoalMl: water });
+      showToast("Ziele gespeichert");
+    });
+
+    document.getElementById("exportAllBtn").addEventListener("click", () => {
+      const json = Storage.exportAll();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lenegoeslean_backup_${toISO(new Date())}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
+
+    document.getElementById("importInput").addEventListener("change", (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (!confirm("Backup einspielen? Deine aktuellen App-Daten werden dabei überschrieben.")) return;
+        try {
+          Storage.importAll(reader.result);
+          showToast("Backup eingespielt");
+          renderEinstellungen();
+        } catch (e) {
+          console.error(e);
+          showToast("Backup konnte nicht gelesen werden");
+        }
+      };
+      reader.readAsText(file);
+      ev.target.value = "";
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!confirm("Wirklich alle Trainings-, Challenge- und Gewichtsdaten unwiderruflich löschen? (Fotos und Einstellungen bleiben erhalten.)")) return;
+      Storage.resetTrackingData();
+      showToast("Daten gelöscht");
+      renderEinstellungen();
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Tab-Steuerung                                                      */
   /* ---------------------------------------------------------------- */
 
-  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht };
+  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht, einstellungen: renderEinstellungen };
 
   function switchTab(tab) {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
@@ -1203,6 +1450,8 @@
 
   function initTopbar() {
     document.getElementById("topbarDate").textContent = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const settingsBtn = document.getElementById("settingsBtn");
+    if (settingsBtn) settingsBtn.addEventListener("click", () => switchTab("einstellungen"));
   }
 
   /* ---------------------------------------------------------------- */
