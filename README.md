@@ -216,6 +216,17 @@ Die Tabs „Woche" und „Monat" wurden grafisch überarbeitet:
   wie aktiv dein Monat war.
 - Alle Diagramme passen sich automatisch an dein gewähltes Farbdesign an.
 
+## 11. Optisches Update
+
+Die App hat einen hochwertigeren Look bekommen: weiche Schatten und
+Tiefe auf Karten, Buttons und Icons statt flacher Flächen, dezente
+Farbverläufe bei Buttons, Fortschrittsbalken und den Statistik-Kacheln
+(inklusive farbigem Akzentstreifen), ein Glas-/Blur-Effekt bei Header und
+unterer Navigation, eigene Icons pro Tab in der Navigationsleiste sowie
+sanfte Antipp-Animationen bei Buttons, Kacheln und Aktivitäten. Funktional
+ändert sich dadurch nichts – alle Bedienelemente sitzen an derselben
+Stelle wie zuvor.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
