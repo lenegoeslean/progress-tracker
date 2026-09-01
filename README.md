@@ -166,6 +166,19 @@ aktuelle & längste Aktiv-Serie) sowie deine beliebtesten Sportarten. Alles
 wird live aus deinen lokal gespeicherten Daten berechnet, es gibt keinen
 zusätzlichen Speicherort.
 
+Außerdem enthält der Trends-Tab jetzt:
+
+- **Challenge-Erfolge**: zeigt, wie viele Wochen-Challenges du komplett
+  geschafft hast (7/7 Tage) und deine durchschnittliche Erfüllung über alle
+  bisherigen Wochen. Darunter ein **Challenge-Verlauf** mit den letzten
+  abgeschlossenen Wochenchallenges als kleine Fortschrittsbalken
+  (🏆 markiert perfekt geschaffte Wochen) – so verschwinden vergangene
+  Challenges nicht mehr einfach, sondern werden zum Erfolgserlebnis.
+- **Aktivitäten durchsuchen**: ein Dropdown zum Filtern nach Sportart zeigt
+  dir alle bisherigen Einträge dieser Sportart, neueste zuerst, inklusive
+  „Zuletzt am …" und Gesamtanzahl. Damit findest du z. B. schnell heraus,
+  wann du zuletzt schwimmen warst, ohne dich durch den Kalender zu klicken.
+
 ## 9. Einstellungen-Tab
 
 Über das ⚙️-Symbol oben rechts im Header öffnest du den Tab
@@ -226,6 +239,48 @@ unterer Navigation, eigene Icons pro Tab in der Navigationsleiste sowie
 sanfte Antipp-Animationen bei Buttons, Kacheln und Aktivitäten. Funktional
 ändert sich dadurch nichts – alle Bedienelemente sitzen an derselben
 Stelle wie zuvor.
+
+Ein zweiter Feinschliff-Durchgang hat außerdem ergänzt: eine
+Begrüßungs-Kachel oben im Tab „Heute" (je nach Tageszeit „Guten Morgen",
+„Guten Abend" …), einheitliche Zahlendarstellung (Ziffern stehen jetzt
+bündig statt wackelig), einen dezenten Glanz-Effekt auf Sport-Icons und
+Chips, sowie einen klareren leeren Zustand bei den Wochen-Trend-Balken
+(zuvor sah eine Woche ganz ohne Aktivität optisch fast wie „fast voll" aus
+– die leere Balken-Schiene ist jetzt deutlich blasser).
+
+## 12. Social-Media-Post erstellen
+
+Im Tab „Woche" gibt es jetzt unter der Karte „Social-Media-Post" den
+Button **„📸 Post erstellen"**. Er öffnet einen Editor, der aus den
+echten Daten der gerade angezeigten Woche automatisch einen fertig
+gestalteten Wochenrückblick im Instagram-Story-Format (1080×1920)
+zusammenstellt – im festen, warmen Creme-/Braun-Design, unabhängig von
+deinem gewählten App-Farbdesign.
+
+Automatisch befüllt werden: alle Tage der Woche mit Aktivitäten,
+Details (Pace/Distanz/Zeit/Kalorien) und Schritten, die
+Kalorien-/Schritte-/Trainingstage-Statistik oben sowie das Fazit
+("X von 7 Tagen aktiv · … kcal verbrannt · … Schritte"). Editierbar
+bleiben:
+
+- **Eyebrow, Titel und Zeitraum** der Kopfzeile
+- **Gewicht** – wird automatisch aus deinen Gewichtseinträgen dieser
+  Woche vorbefüllt (oder dem letzten bekannten Wert davor), lässt sich
+  aber überschreiben oder leeren
+- **Fazit** – standardmäßig automatisch generiert; sobald du selbst
+  etwas einträgst, wird dein Text verwendet (Button „Automatisch
+  generieren" setzt wieder zurück)
+- **Hintergrundbild** – ist für die Woche bereits ein Progress-Foto
+  gespeichert, wird es automatisch als Hintergrund verwendet, sonst ein
+  dezenter Verlauf; du kannst jederzeit ein eigenes Bild wählen oder
+  zurücksetzen
+
+Mit den Pfeilen oben rechts lässt sich zwischen Wochen wechseln (die
+automatisch befüllten Felder aktualisieren sich dabei, Titel und
+Eyebrow bleiben erhalten). Der Button **„Als PNG herunterladen"**
+speichert den fertigen Post als Bilddatei – bereit zum Teilen. Auch
+dieser Export läuft komplett lokal auf deinem Gerät; es werden keine
+Daten irgendwohin hochgeladen.
 
 ## Mögliche nächste Schritte
 

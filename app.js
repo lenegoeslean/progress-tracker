@@ -642,8 +642,13 @@
     const container = document.getElementById("tab-heute");
     const today = new Date();
     const dateISO = toISO(today);
+    const hour = today.getHours();
+    const greeting = hour < 11 ? "Guten Morgen ☀️" : hour < 18 ? "Schön, dass du da bist 👋" : "Guten Abend 🌙";
     container.innerHTML = `
-      <h2 class="section-title" style="margin-top:0;">${formatWeekdayDate(today)}</h2>
+      <div class="hero-card">
+        <div class="hero-greeting">${greeting}</div>
+        <div class="hero-date">${formatWeekdayDate(today)}</div>
+      </div>
       <div id="heuteEditor"></div>
     `;
     const editorRoot = document.getElementById("heuteEditor");
@@ -772,6 +777,12 @@
       <h2 class="section-title">Schritte pro Tag</h2>
       <div class="card">${stepsChart}</div>
 
+      <h2 class="section-title">Social-Media-Post</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Erstellt automatisch aus den Daten dieser Woche einen fertig gestalteten Wochenrückblick zum Teilen.</div>
+        <button class="btn btn-secondary btn-block" id="createPostBtn">📸 Post erstellen</button>
+      </div>
+
       <h2 class="section-title">Daten exportieren</h2>
       <div class="card">
         <div class="small muted" style="margin-bottom:10px;">Lädt alle Einträge dieser Woche als CSV-Datei herunter (z. B. zum Sichern oder für Excel).</div>
@@ -782,6 +793,7 @@
     document.getElementById("wochePrev").addEventListener("click", () => { wocheAnchor = addDays(weekStart, -7); renderWoche(); });
     document.getElementById("wocheNext").addEventListener("click", () => { wocheAnchor = addDays(weekStart, 7); renderWoche(); });
     document.getElementById("downloadWeekBtn").addEventListener("click", () => downloadWeekCSV(weekStart));
+    document.getElementById("createPostBtn").addEventListener("click", () => openPostGenerator(weekStart));
   }
 
   function downloadWeekCSV(weekStart) {
@@ -811,6 +823,317 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Post-Generator (Wochenrückblick-Post)                              */
+  /* Erzeugt aus den echten Wochendaten (dieselben Werte wie im         */
+  /* Woche-Tab) einen fertig gestalteten Instagram-Story-Post im festen */
+  /* Creme/Braun-Design, unabhängig vom App-Theme. Keine manuelle       */
+  /* Dateneingabe nötig – nur Kopfzeile/Fazit/Hintergrund sind editierbar. */
+  /* ---------------------------------------------------------------- */
+
+  const POST_STEP_ICON = '<svg viewBox="0 0 24 24" fill="#3E2723"><ellipse cx="8" cy="15" rx="3.4" ry="5.4" transform="rotate(-12 8 15)"/><ellipse cx="16.5" cy="9" rx="3.1" ry="4.9" transform="rotate(10 16.5 9)"/></svg>';
+
+  const POST_ICONS = {
+    schwimmen: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 3.5 3"/><path d="M3 11c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 3.5 3"/><path d="M8 6.5c.8-1.2 1.6-1.9 2.4-2.1"/></svg>',
+    cycling: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.6"/><circle cx="18.5" cy="17.5" r="3.6"/><path d="M5.5 17.5 10 8h3"/><path d="M7.8 8h2.2"/><path d="M13 8l5.5 9.5"/><path d="M10 8l3.4 6h5.1"/></svg>',
+    joggen: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="3.5" y1="17" x2="7.5" y2="13"/><line x1="7" y1="20" x2="13" y2="14"/><line x1="11" y1="20.5" x2="20.5" y2="11"/></svg>',
+    wandern: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19 9 8l3.5 5 2-3L21 19Z"/><path d="M9 8V5.6"/><circle cx="9" cy="4.3" r="1.1" fill="#3E2723" stroke="none"/></svg>',
+    kraft: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5M2.3 10.5v3"/><path d="M6.6 8v8"/><line x1="6.6" y1="12" x2="17.4" y2="12"/><path d="M17.4 8v8"/><path d="M20 9.5v5M21.7 10.5v3"/></svg>',
+    pilates: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10.5" width="19" height="3" rx="1.5"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+    hula: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="6.2" r="0.9" fill="#3E2723" stroke="none"/></svg>',
+    padel: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="10" cy="9" rx="6.4" ry="7.4" transform="rotate(-20 10 9)"/><circle cx="9.3" cy="6.6" r="0.6" fill="#3E2723" stroke="none"/><circle cx="12.2" cy="7.6" r="0.6" fill="#3E2723" stroke="none"/><circle cx="7.6" cy="9.6" r="0.6" fill="#3E2723" stroke="none"/><circle cx="10.6" cy="10.6" r="0.6" fill="#3E2723" stroke="none"/><line x1="6" y1="14.5" x2="3" y2="18.5"/><circle cx="19" cy="6" r="1.6"/></svg>',
+    ruhetag: '<svg viewBox="0 0 24 24" fill="#3E2723" stroke="none"><path d="M15 3a9 9 0 1 0 6 15 7 7 0 0 1-6-15z"/></svg>',
+    generic: '<svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="m8.3 12.4 2.6 2.6 4.8-5.4"/></svg>'
+  };
+
+  // Ordnet jede App-Sportart einem der Post-Icons zu.
+  const POST_ICON_MAP = {
+    joggen: "joggen", inclinewalk: "wandern", inlineskaten: "generic", zirkeltraining: "kraft",
+    cycling: "cycling", schwimmen: "schwimmen", homeworkout: "kraft", hulahoop: "hula",
+    pilates: "pilates", reformerpilates: "pilates", padel: "padel", custom: "generic", restday: "ruhetag"
+  };
+  function getPostIcon(type) {
+    return POST_ICONS[POST_ICON_MAP[type]] || POST_ICONS.generic;
+  }
+
+  let postWeekStart = null;
+  let postFazitTouched = false;
+
+  function formatWeekRangeDE(weekStart, weekEnd) {
+    const d1 = weekStart.getDate(), d2 = weekEnd.getDate();
+    const m1 = MONTHS_LONG[weekStart.getMonth()], m2 = MONTHS_LONG[weekEnd.getMonth()];
+    const y = weekEnd.getFullYear();
+    if (weekStart.getMonth() === weekEnd.getMonth() && weekStart.getFullYear() === weekEnd.getFullYear()) {
+      return `${d1}.–${d2}. ${m2} ${y}`;
+    }
+    return `${d1}. ${m1} – ${d2}. ${m2} ${y}`;
+  }
+
+  function getWeightForWeek(weekStart, weekEnd) {
+    const startISO = toISO(weekStart), endISO = toISO(weekEnd);
+    const weights = Storage.getWeights(); // aufsteigend sortiert
+    const inWeek = weights.filter((w) => w.date >= startISO && w.date <= endISO);
+    if (inWeek.length) return inWeek[inWeek.length - 1].kg;
+    const before = weights.filter((w) => w.date < startISO);
+    if (before.length) return before[before.length - 1].kg;
+    return null;
+  }
+
+  function buildPostActivityDetails(a, sport) {
+    const parts = [];
+    (sport.fields || []).forEach((f) => {
+      const v = a[f];
+      if (v === undefined || v === null || v === "") return;
+      if (f === "pace") parts.push(`${v} min/km`);
+      else if (f === "distanz") parts.push(`${v} km`);
+      else if (f === "zeit") parts.push(`${v} Min`);
+      else if (f === "kalorien") parts.push(`${v} kcal`);
+      else parts.push(`${v}`);
+    });
+    return parts.join(" · ");
+  }
+
+  function computePostWeekData(weekStart) {
+    const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    let stepsSum = 0, stepsDayCount = 0, kcalSum = 0, activeCount = 0;
+    const dayData = days.map((d, idx) => {
+      const iso = toISO(d);
+      const entry = Storage.getEntry(iso);
+      const hasSteps = !!entry.steps;
+      if (hasSteps) { stepsSum += entry.steps; stepsDayCount++; }
+      const activities = (entry.activities || []).map((a) => {
+        const isRest = a.type === "restday";
+        const sport = SPORTS[a.type] || SPORTS.custom;
+        const name = sport.custom && a.customName ? a.customName : sport.label;
+        return { name, isRest, details: buildPostActivityDetails(a, sport), kcal: Number(a.kalorien) || 0, iconType: a.type };
+      });
+      const realActivities = activities.filter((a) => !a.isRest);
+      if (realActivities.length) activeCount++;
+      realActivities.forEach((a) => { kcalSum += a.kcal; });
+      return { dow: WEEKDAYS_SHORT[idx].toUpperCase(), dateLabel: formatShortDate(d), hasSteps, steps: entry.steps || 0, activities };
+    });
+    return { dayData, stepsSum, stepsDayCount, kcalSum, activeCount };
+  }
+
+  function buildPostDaysHTML(dayData) {
+    return dayData.map((day) => {
+      const isBlank = !day.hasSteps && day.activities.length === 0;
+      if (isBlank) {
+        return `<div class="post-day post-blank post-glass">
+          <div class="post-day-tag"><div class="post-dow">${day.dow}</div><div class="post-date">${esc(day.dateLabel)}</div></div>
+          <div class="post-day-sep"></div>
+          <div class="post-activities"><div class="post-dash-mark">–</div></div>
+        </div>`;
+      }
+      const actHtml = day.activities.length
+        ? day.activities.map((a) => {
+            if (a.isRest) {
+              return `<div class="post-act-row"><div class="post-act-icon">${getPostIcon(a.iconType)}</div><div class="post-rest-label">Ruhetag</div></div>`;
+            }
+            return `<div class="post-act-row"><div class="post-act-icon">${getPostIcon(a.iconType)}</div><div class="post-act-text"><div class="post-name">${esc(a.name)}</div><div class="post-meta">${esc(a.details)}</div></div></div>`;
+          }).join("")
+        : `<div class="post-act-row"><div class="post-act-text"><div class="post-dash-mark">–</div></div></div>`;
+      const stepsColHtml = day.hasSteps
+        ? `<div class="post-num">${day.steps.toLocaleString("de-DE")}</div><div class="post-lbl">${POST_STEP_ICON}<span>Schritte</span></div>`
+        : `<div class="post-num">–</div><div class="post-lbl">${POST_STEP_ICON}<span>Schritte</span></div>`;
+      return `<div class="post-day post-glass">
+        <div class="post-day-tag"><div class="post-dow">${day.dow}</div><div class="post-date">${esc(day.dateLabel)}</div></div>
+        <div class="post-day-sep"></div>
+        <div class="post-activities">${actHtml}</div>
+        <div class="post-steps-col">${stepsColHtml}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderPostPreview() {
+    if (!postWeekStart) return;
+    const data = computePostWeekData(postWeekStart);
+
+    document.getElementById("postCEyebrow").textContent = document.getElementById("postEyebrow").value;
+    document.getElementById("postCTitle").textContent = document.getElementById("postTitle").value;
+    document.getElementById("postCRange").textContent = document.getElementById("postRange").value;
+
+    const weightVal = document.getElementById("postWeight").value;
+    const weightPill = document.getElementById("postCWeightPill");
+    if (weightVal !== "") {
+      weightPill.style.display = "inline-flex";
+      document.getElementById("postCWeightValue").textContent = String(weightVal).replace(".", ",");
+    } else {
+      weightPill.style.display = "none";
+    }
+
+    document.getElementById("postDaysCanvas").innerHTML = buildPostDaysHTML(data.dayData);
+    document.getElementById("postStatKcal").textContent = Math.round(data.kcalSum).toLocaleString("de-DE");
+    document.getElementById("postStatSteps").textContent = Math.round(data.stepsSum).toLocaleString("de-DE");
+    document.getElementById("postStatStepsSub").textContent = data.stepsDayCount > 0
+      ? `Ø ${Math.round(data.stepsSum / data.stepsDayCount).toLocaleString("de-DE")} / Tag`
+      : "–";
+    document.getElementById("postStatDays").textContent = `${data.activeCount}/7`;
+
+    document.getElementById("postStatDots").innerHTML = data.dayData.map((d) => {
+      const hasReal = d.activities.some((a) => !a.isRest);
+      return `<div class="post-dot ${hasReal ? "on" : "off"}"></div>`;
+    }).join("");
+
+    const footerEl = document.getElementById("postCFooterLine");
+    if (!postFazitTouched) {
+      footerEl.innerHTML = `${data.activeCount} von 7&nbsp;Tagen aktiv <span class="post-sep">·</span> ${Math.round(data.kcalSum).toLocaleString("de-DE")}&nbsp;kcal verbrannt <span class="post-sep">·</span> ${Math.round(data.stepsSum).toLocaleString("de-DE")}&nbsp;Schritte`;
+    } else {
+      footerEl.textContent = document.getElementById("postFazit").value;
+    }
+  }
+
+  function buildDefaultPostBg() {
+    const c = document.createElement("canvas");
+    c.width = 1080; c.height = 1920;
+    const ctx = c.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
+    grad.addColorStop(0, "#F7EFE6");
+    grad.addColorStop(0.5, "#F1E0D6");
+    grad.addColorStop(1, "#E7CBB8");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1080, 1920);
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(850, 220, 260, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(120, 1650, 300, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    return c.toDataURL("image/png");
+  }
+
+  function blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function setPostBackgroundForWeek(weekStart, weekEnd) {
+    let dataUrl = null;
+    try {
+      const photos = await PhotoDB.all();
+      const startISO = toISO(weekStart), endISO = toISO(weekEnd);
+      const match = photos.find((p) => p.date >= startISO && p.date <= endISO);
+      if (match && match.blob) dataUrl = await blobToDataURL(match.blob);
+    } catch (e) { /* Fotos nicht verfügbar – Standardhintergrund nutzen */ }
+    const img = document.getElementById("postBgImg");
+    if (img) img.src = dataUrl || buildDefaultPostBg();
+  }
+
+  async function syncPostWeekFields(isFirstOpen) {
+    const weekEnd = addDays(postWeekStart, 6);
+    if (isFirstOpen) {
+      document.getElementById("postEyebrow").value = "Wochenrückblick";
+      document.getElementById("postTitle").value = "Meine Woche in Bewegung";
+    }
+    document.getElementById("postRange").value = formatWeekRangeDE(postWeekStart, weekEnd);
+    const w = getWeightForWeek(postWeekStart, weekEnd);
+    document.getElementById("postWeight").value = w != null ? w : "";
+    postFazitTouched = false;
+    document.getElementById("postFazit").value = "";
+    document.getElementById("postWeekLabel").textContent =
+      `KW ${weekKey(postWeekStart).split("-W")[1]} · ${formatShortDate(postWeekStart)}–${formatShortDate(weekEnd)}`;
+    await setPostBackgroundForWeek(postWeekStart, weekEnd);
+    renderPostPreview();
+    fitPostStage();
+  }
+
+  function fitPostStage() {
+    const scaler = document.getElementById("postStageScaler");
+    const outer = document.querySelector(".post-stage-outer");
+    if (!scaler || !outer) return;
+    const available = Math.min(window.innerWidth, 520) - 32;
+    const scale = Math.min(1, available / 1080);
+    scaler.style.transform = `scale(${scale})`;
+    outer.style.minHeight = `${1920 * scale + 16}px`;
+  }
+
+  async function openPostGenerator(weekStart) {
+    postWeekStart = weekStart;
+    document.getElementById("postOverlay").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    await syncPostWeekFields(true);
+  }
+
+  function closePostGenerator() {
+    document.getElementById("postOverlay").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  function downloadPostPNG() {
+    const btn = document.getElementById("postDownloadBtn");
+    if (typeof html2canvas === "undefined") {
+      alert("Die Export-Bibliothek konnte nicht geladen werden. Bitte prüfe deine Internetverbindung (wird einmalig von einem CDN geladen) und lade die Seite neu.");
+      return;
+    }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Wird erstellt …";
+
+    const capture = document.getElementById("post-capture");
+    const scaler = document.getElementById("postStageScaler");
+    const prevTransform = scaler.style.transform;
+    scaler.style.transform = "none";
+
+    function restore() {
+      fitPostStage();
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+
+    try {
+      html2canvas(capture, { width: 1080, height: 1920, scale: 2, backgroundColor: null, useCORS: true })
+        .then((canvas) => {
+          const link = document.createElement("a");
+          link.download = `wochenrueckblick_${weekKey(postWeekStart)}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+          restore();
+        })
+        .catch((err) => { alert("Export fehlgeschlagen: " + err); restore(); });
+    } catch (err) {
+      alert("Export fehlgeschlagen: " + err);
+      restore();
+    }
+  }
+
+  function initPostGenerator() {
+    document.getElementById("postCloseBtn").addEventListener("click", closePostGenerator);
+    document.getElementById("postWeekPrev").addEventListener("click", () => {
+      postWeekStart = addDays(postWeekStart, -7);
+      syncPostWeekFields(false);
+    });
+    document.getElementById("postWeekNext").addEventListener("click", () => {
+      postWeekStart = addDays(postWeekStart, 7);
+      syncPostWeekFields(false);
+    });
+    ["postEyebrow", "postTitle", "postRange", "postWeight"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", renderPostPreview);
+    });
+    document.getElementById("postFazit").addEventListener("input", () => { postFazitTouched = true; renderPostPreview(); });
+    document.getElementById("postFazitAutoBtn").addEventListener("click", () => {
+      postFazitTouched = false;
+      document.getElementById("postFazit").value = "";
+      renderPostPreview();
+    });
+    document.getElementById("postChangeBgBtn").addEventListener("click", () => document.getElementById("postBgInput").click());
+    document.getElementById("postBgInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => { document.getElementById("postBgImg").src = ev.target.result; };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+    document.getElementById("postResetBgBtn").addEventListener("click", () => {
+      setPostBackgroundForWeek(postWeekStart, addDays(postWeekStart, 6));
+    });
+    document.getElementById("postDownloadBtn").addEventListener("click", downloadPostPNG);
+    window.addEventListener("resize", fitPostStage);
   }
 
   /* ---------------------------------------------------------------- */
@@ -1095,6 +1418,51 @@
 
   let challengeAnchor = new Date();
 
+  function weekStartFromKey(wKey) {
+    const [wy, wn] = wKey.split("-W");
+    const jan4 = new Date(Number(wy), 0, 4);
+    return addDays(startOfWeek(jan4), (Number(wn) - 1) * 7);
+  }
+
+  function countChallengeDoneDays(wKey) {
+    const wkStart = weekStartFromKey(wKey);
+    let cnt = 0;
+    for (let i = 0; i < 7; i++) if (Storage.getEntry(toISO(addDays(wkStart, i))).challengeChecked) cnt++;
+    return cnt;
+  }
+
+  function computeChallengeHistory(opts) {
+    const { limit, excludeKey } = opts || {};
+    const data = Storage.load();
+    let weeks = Object.keys(data.challenges).filter((k) => data.challenges[k] && data.challenges[k].text);
+    if (excludeKey) weeks = weeks.filter((k) => k !== excludeKey);
+    weeks.sort().reverse();
+    const rows = weeks.map((wk) => ({
+      wKey: wk, weekNum: wk.split("-W")[1], text: data.challenges[wk].text, done: countChallengeDoneDays(wk)
+    }));
+    const perfectWeeks = rows.filter((r) => r.done === 7).length;
+    const avgPct = rows.length ? Math.round((rows.reduce((s, r) => s + r.done, 0) / (rows.length * 7)) * 100) : 0;
+    return { totalWeeks: rows.length, perfectWeeks, avgPct, rows: typeof limit === "number" ? rows.slice(0, limit) : rows };
+  }
+
+  function buildChallengeHistoryRows(rows) {
+    if (!rows.length) return `<div class="empty-hint">Noch keine abgeschlossenen Challenges.</div>`;
+    return rows.map((r, i) => {
+      const pct = Math.round((r.done / 7) * 100);
+      const badge = r.done === 7 ? " 🏆" : "";
+      return `
+        <div style="${i < rows.length - 1 ? "margin-bottom:14px;" : ""}">
+          <div class="row-between" style="margin-bottom:6px;">
+            <span class="small" style="font-weight:700;">KW ${r.weekNum}${badge}</span>
+            <span class="small muted">${r.done}/7</span>
+          </div>
+          <div class="small muted" style="margin-bottom:6px;">${esc(r.text)}</div>
+          <div class="bar-track" style="height:7px;"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      `;
+    }).join("");
+  }
+
   function renderChallenge() {
     const container = document.getElementById("tab-challenge");
     const weekStart = startOfWeek(challengeAnchor);
@@ -1115,22 +1483,8 @@
       </div>`;
     }).join("");
 
-    const data = Storage.load();
-    const otherWeeks = Object.keys(data.challenges)
-      .filter((k) => k !== wKey && data.challenges[k].text)
-      .sort().reverse().slice(0, 10);
-
-    const historyRows = otherWeeks.length ? otherWeeks.map((wk) => {
-      const [wy, wn] = wk.split("-W");
-      const jan4 = new Date(Number(wy), 0, 4);
-      const wkStart = addDays(startOfWeek(jan4), (Number(wn) - 1) * 7);
-      let cnt = 0;
-      for (let i = 0; i < 7; i++) if (Storage.getEntry(toISO(addDays(wkStart, i))).challengeChecked) cnt++;
-      return `<div class="type-row">
-        <span class="small" style="max-width:70%;"><strong>KW ${wn}:</strong> ${esc(data.challenges[wk].text)}</span>
-        <span class="small muted">${cnt}/7</span>
-      </div>`;
-    }).join("") : `<div class="empty-hint">Noch keine früheren Challenges.</div>`;
+    const history = computeChallengeHistory({ limit: 10, excludeKey: wKey });
+    const historyRows = buildChallengeHistoryRows(history.rows);
 
     container.innerHTML = `
       <div class="period-nav">
@@ -1327,6 +1681,28 @@
         }).join(" ")
       : `<span class="small muted">Noch keine Aktivitäten erfasst.</span>`;
 
+    const curWKey = weekKey(today);
+    const chHistory = computeChallengeHistory({ limit: 6, excludeKey: curWKey });
+    const challengeSectionHTML = chHistory.totalWeeks ? `
+      <h2 class="section-title">Challenge-Erfolge</h2>
+      <div class="card">
+        <div class="best-row">
+          <span class="best-label">🏆 Perfekte Wochen (7/7)</span>
+          <div class="best-value">${chHistory.perfectWeeks} ${chHistory.perfectWeeks === 1 ? "Woche" : "Wochen"}</div>
+        </div>
+        <div class="best-row">
+          <span class="best-label">Ø Erfüllung pro Woche</span>
+          <div class="best-value">${chHistory.avgPct}%</div>
+        </div>
+      </div>
+
+      <h2 class="section-title">Challenge-Verlauf</h2>
+      <div class="card">${buildChallengeHistoryRows(chHistory.rows)}</div>
+    ` : "";
+
+    const sportFilterOptions = `<option value="">Alle Sportarten</option>` +
+      Object.keys(SPORTS).map((key) => `<option value="${key}">${SPORTS[key].icon} ${SPORTS[key].label}</option>`).join("");
+
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">Diese Woche vs. letzte Woche</h2>
       <div class="card">${compareRows}</div>
@@ -1342,7 +1718,74 @@
 
       <h2 class="section-title">Beliebteste Sportarten</h2>
       <div class="card">${topSportsHTML}</div>
+
+      ${challengeSectionHTML}
+
+      <h2 class="section-title">Aktivitäten durchsuchen</h2>
+      <div class="card">
+        <div class="field" style="margin-bottom:0;">
+          <select id="historyFilterSelect">${sportFilterOptions}</select>
+        </div>
+      </div>
+      <div class="card" id="historyResults"></div>
     `;
+
+    const historyResults = document.getElementById("historyResults");
+    const historyFilterSelect = document.getElementById("historyFilterSelect");
+    renderActivityHistoryResults(historyResults, historyFilterSelect.value);
+    historyFilterSelect.addEventListener("change", () => {
+      renderActivityHistoryResults(historyResults, historyFilterSelect.value);
+    });
+  }
+
+  function getAllActivitiesFlat() {
+    const data = Storage.load();
+    const list = [];
+    Object.keys(data.entries).forEach((iso) => {
+      (data.entries[iso].activities || []).forEach((a) => list.push(Object.assign({ date: iso }, a)));
+    });
+    list.sort((a, b) => b.date.localeCompare(a.date));
+    return list;
+  }
+
+  function renderActivityHistoryResults(container, filterType) {
+    const all = getAllActivitiesFlat();
+    const filtered = filterType ? all.filter((a) => a.type === filterType) : all;
+
+    if (!filtered.length) {
+      container.innerHTML = `<div class="empty-hint">Keine Einträge gefunden.</div>`;
+      return;
+    }
+
+    const shown = filtered.slice(0, 25);
+    const summary = filterType
+      ? `<div class="small muted" style="margin-bottom:12px;">Zuletzt: <strong>${formatShortDate(fromISO(filtered[0].date))}</strong> · insgesamt ${filtered.length}×</div>`
+      : `<div class="small muted" style="margin-bottom:12px;">${filtered.length} Aktivitäten insgesamt</div>`;
+
+    const rows = shown.map((a) => {
+      const sport = SPORTS[a.type] || SPORTS.custom;
+      const label = sport.custom && a.customName ? a.customName : sport.label;
+      const statParts = sport.fields.map((f) => {
+        if (a[f] === undefined || a[f] === "" || a[f] === null) return "";
+        return `${a[f]}${FIELD_META[f].unit === "min/km" ? " min/km" : " " + FIELD_META[f].unit}`;
+      }).filter(Boolean).join(" · ");
+      return `
+        <div class="activity-item">
+          <div class="info">
+            <div class="icon-badge" style="background:${sport.bg}">${sport.icon}</div>
+            <div>
+              <div>${esc(label)} <span class="small muted">· ${formatShortDate(fromISO(a.date))}</span></div>
+              <div class="stats">${statParts || "&nbsp;"}</div>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+
+    const more = filtered.length > shown.length
+      ? `<div class="small muted" style="text-align:center; padding-top:4px;">…und ${filtered.length - shown.length} weitere</div>`
+      : "";
+
+    container.innerHTML = summary + rows + more;
   }
 
   /* ---------------------------------------------------------------- */
@@ -1694,6 +2137,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     initTopbar();
     initNav();
+    initPostGenerator();
     renderHeute();
     initServiceWorker();
   });

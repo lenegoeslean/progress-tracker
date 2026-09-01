@@ -15,7 +15,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 
 <style>
   :root{
@@ -88,6 +89,24 @@
   .tab-panel{display:none;}
   .tab-panel.active{display:block; animation:fade .22s ease;}
   @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+  .stat-value,.trend-value,.best-value,.vbar-value,.bar-val,.period-label,.hero-date,.chip{font-variant-numeric:tabular-nums;}
+
+  .hero-card{
+    background:linear-gradient(135deg, var(--accent-soft-2), var(--accent-soft));
+    border-radius:var(--radius-lg);
+    padding:22px 20px;
+    margin-bottom:18px;
+    box-shadow:var(--shadow-sm);
+    position:relative; overflow:hidden;
+    transition:background .3s ease;
+  }
+  .hero-card::after{
+    content:""; position:absolute; right:-34px; top:-34px; width:130px; height:130px; border-radius:50%;
+    background:radial-gradient(circle, color-mix(in srgb, var(--accent) 25%, transparent), transparent 70%);
+  }
+  .hero-greeting{font-size:12.5px; font-weight:700; color:var(--accent-dark); letter-spacing:.02em; margin-bottom:5px; position:relative;}
+  .hero-date{font-size:19px; font-weight:800; letter-spacing:-0.01em; color:var(--text); position:relative;}
 
   h2.section-title{
     font-size:14.5px; font-weight:800; margin:26px 0 10px; color:var(--text);
@@ -170,6 +189,12 @@
     font-size:13px; font-weight:600;
     border:1px solid rgba(0,0,0,0.04);
     box-shadow:var(--shadow-sm);
+    position:relative; overflow:hidden;
+  }
+  .chip::before{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(145deg, rgba(255,255,255,0.32), rgba(255,255,255,0) 55%);
+    pointer-events:none;
   }
   .chip .emoji{font-size:15px;}
 
@@ -185,6 +210,12 @@
   .activity-item .icon-badge{
     width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:18px;
     box-shadow:inset 0 -3px 5px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04);
+    position:relative; overflow:hidden;
+  }
+  .activity-item .icon-badge::before{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(145deg, rgba(255,255,255,0.4), rgba(255,255,255,0) 55%);
+    pointer-events:none;
   }
   .activity-item.editing{border-color:var(--accent); background:var(--accent-soft-2); box-shadow:var(--shadow-sm);}
   .item-actions{display:flex; align-items:center; gap:2px; flex-shrink:0;}
@@ -242,7 +273,7 @@
 
   .bar-row{display:flex; align-items:center; gap:10px; margin-bottom:9px;}
   .bar-row .bar-label{width:34px; font-size:12px; font-weight:600; color:var(--text-muted);}
-  .bar-track{flex:1; height:9px; background:var(--accent-soft-2); border-radius:6px; overflow:hidden;}
+  .bar-track{flex:1; height:9px; background:color-mix(in srgb, var(--border) 55%, var(--card)); border-radius:6px; overflow:hidden;}
   .bar-fill{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-dark)); border-radius:6px;}
   .bar-row .bar-val{width:52px; text-align:right; font-size:11.5px; color:var(--text-muted);}
 
@@ -373,6 +404,102 @@
   }
   .update-banner.show{display:flex;}
   .update-banner button{background:var(--accent); color:#fff; border:none; border-radius:999px; padding:4px 10px; font-size:11.5px; font-weight:700;}
+
+  /* ===========================================================
+     Post-Generator (Wochenrückblick-Post) – bewusst eigenständig
+     gestaltet (warmes Creme/Braun statt App-Theme) und komplett
+     unter .post-overlay-root mit "post-"-Präfix gescoped, damit
+     nichts mit den globalen App-Styles (.btn, .card, input, ...)
+     kollidiert.
+     =========================================================== */
+  .post-overlay-root{position:fixed; inset:0; z-index:200; background:#EDE6DE; overflow-y:auto; -webkit-overflow-scrolling:touch; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; color:#3E2723;}
+  .post-overlay-root.hidden{display:none;}
+  .post-overlay-root *{box-sizing:border-box;}
+
+  .post-topbar{position:sticky; top:0; z-index:5; display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:calc(12px + var(--safe-top)) 14px 12px; background:rgba(237,230,222,0.94); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid rgba(62,39,35,0.1);}
+  .post-topbar h2{font-size:15.5px; font-weight:800; margin:0;}
+  .post-week-label{font-size:11px; font-weight:600; color:rgba(62,39,35,0.55); margin-top:2px;}
+  .post-close-btn{width:32px; height:32px; flex:0 0 32px; border-radius:50%; border:none; background:rgba(62,39,35,0.08); color:#3E2723; font-size:15px; display:flex; align-items:center; justify-content:center;}
+  .post-close-btn:active{transform:scale(0.9);}
+  .post-week-nav{display:flex; align-items:center; gap:6px;}
+  .post-week-nav button{width:28px; height:28px; border-radius:50%; border:none; background:rgba(62,39,35,0.08); color:#3E2723; font-size:14px; font-weight:700;}
+  .post-week-nav button:active{transform:scale(0.9);}
+
+  .post-editor{padding:16px;}
+  .post-field-group{margin-bottom:18px;}
+  .post-field-group h3{font-size:11.5px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:rgba(62,39,35,0.5); margin:0 0 10px;}
+  .post-field-group label{display:block; font-size:12.5px; font-weight:600; color:rgba(62,39,35,0.68); margin-bottom:10px;}
+  .post-field-group label>span{display:block; margin-bottom:5px;}
+  .post-field-group input[type="text"], .post-field-group input[type="number"], .post-field-group textarea{
+    width:100%; font-family:inherit; font-size:14px; font-weight:500; color:#3E2723;
+    background:#FFFDFA; border:1.5px solid rgba(62,39,35,0.14); border-radius:10px; padding:10px 12px; outline:none;
+  }
+  .post-field-group input:focus, .post-field-group textarea:focus{border-color:rgba(103,6,38,0.4);}
+  .post-field-group textarea{resize:vertical; line-height:1.4; min-height:56px; font-family:inherit;}
+  .post-hint{font-size:11px; color:rgba(62,39,35,0.45); margin-top:-4px; line-height:1.4;}
+
+  .post-btn{appearance:none; border:none; cursor:pointer; background:#3E2723; color:#F4C9D6; font-family:inherit; font-weight:700; font-size:13px; padding:11px 16px; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 6px 16px rgba(62,39,35,0.22);}
+  .post-btn:active{transform:scale(0.97);}
+  .post-btn:disabled{opacity:0.6; cursor:progress; transform:none;}
+  .post-btn.post-ghost{background:rgba(62,39,35,0.08); color:#3E2723; box-shadow:none; flex:1 1 0;}
+  .post-btn.post-full{width:100%;}
+  .post-btn-row{display:flex; flex-wrap:wrap; gap:8px;}
+
+  .post-stage-outer{display:flex; justify-content:center; padding:4px 0 28px;}
+  .post-stage-scaler{width:1080px; height:1920px; transform-origin:top center; flex:0 0 auto; box-shadow:0 24px 50px rgba(62,39,35,0.28); border-radius:8px; overflow:hidden;}
+  #post-capture{position:relative; width:1080px; height:1920px; overflow:hidden; background:#EDE6DE;}
+  #post-capture .post-bg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  #post-capture .post-scrim{position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,248,238,0.38) 0%, rgba(255,248,238,0.08) 16%, rgba(255,248,238,0.06) 78%, rgba(255,248,238,0.4) 100%);}
+  #post-capture .post-canvas{position:relative; z-index:2; width:100%; height:100%; padding:84px 56px 70px; display:flex; flex-direction:column; gap:42px;}
+  .post-glass{background:rgba(255,252,246,0.5); backdrop-filter:blur(22px) saturate(1.15); -webkit-backdrop-filter:blur(22px) saturate(1.15); border:1px solid rgba(255,255,255,0.65); border-radius:30px; box-shadow:0 10px 30px rgba(62,39,35,0.10);}
+
+  .post-header{padding:50px 34px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;}
+  .post-eyebrow{font-size:17px; font-weight:600; letter-spacing:7px; color:rgba(62,39,35,0.55); text-indent:7px; text-transform:uppercase;}
+  .post-title{font-size:50px; font-weight:800; letter-spacing:-0.5px; color:#3E2723;}
+  .post-range{font-size:19px; font-weight:500; color:rgba(62,39,35,0.6); margin-top:4px;}
+  .post-weight-pill{margin-top:10px; display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:999px; background:rgba(62,39,35,0.08); font-size:16px; font-weight:700; color:#3E2723;}
+  .post-weight-pill svg{width:16px; height:16px;}
+
+  .post-stats{display:flex; gap:16px;}
+  .post-stat{flex:1; padding:36px 16px 32px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px;}
+  .post-stat .post-icon{width:30px; height:30px; margin-bottom:4px; opacity:0.75;}
+  .post-stat .post-label{font-size:14px; font-weight:600; letter-spacing:1.6px; color:rgba(62,39,35,0.55); text-transform:uppercase;}
+  .post-stat .post-value{font-size:40px; font-weight:800; color:#3E2723; line-height:1.1;}
+  .post-stat .post-sub{font-size:14px; font-weight:500; color:rgba(62,39,35,0.55);}
+  .post-dots{display:flex; gap:7px; margin-top:6px;}
+  .post-dot{width:11px; height:11px; border-radius:50%;}
+  .post-dot.on{background:#3E2723;}
+  .post-dot.off{border:1.6px solid rgba(62,39,35,0.35); background:transparent;}
+
+  .post-section-label{font-size:14px; font-weight:600; letter-spacing:3px; color:rgba(62,39,35,0.55); text-transform:uppercase; padding:4px 6px 0;}
+
+  .post-days{display:flex; flex-direction:column; gap:27px;}
+  .post-day{display:flex; align-items:center; padding:33px 30px; gap:22px; min-height:104px;}
+  .post-day.post-blank{padding:27px 30px;}
+  .post-day-tag{width:70px; flex:0 0 70px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;}
+  .post-day-tag .post-dow{font-size:21px; font-weight:800; letter-spacing:0.5px; color:#3E2723;}
+  .post-day-tag .post-date{font-size:14px; font-weight:500; color:rgba(62,39,35,0.5);}
+  .post-day-sep{width:1px; align-self:stretch; background:rgba(62,39,35,0.14); border-radius:1px;}
+
+  .post-activities{flex:1; display:flex; flex-direction:column; gap:14px; min-width:0;}
+  .post-act-row{display:flex; align-items:center; gap:14px;}
+  .post-act-icon{width:38px; height:38px; flex:0 0 38px; border-radius:50%; background:rgba(62,39,35,0.08); display:flex; align-items:center; justify-content:center;}
+  .post-act-icon svg{width:20px; height:20px;}
+  .post-act-text{min-width:0;}
+  .post-act-text .post-name{font-size:21px; font-weight:700; color:#3E2723; line-height:1.3;}
+  .post-act-text .post-meta{font-size:15px; font-weight:500; color:rgba(62,39,35,0.58); line-height:1.3;}
+  .post-dash-mark{font-size:26px; font-weight:700; color:rgba(62,39,35,0.32); letter-spacing:2px;}
+  .post-rest-label{font-size:18px; font-weight:600; font-style:italic; color:rgba(62,39,35,0.55);}
+
+  .post-steps-col{flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:3px; padding-left:14px;}
+  .post-steps-col .post-num{font-size:23px; font-weight:800; color:#3E2723; line-height:1;}
+  .post-steps-col .post-lbl{display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; color:rgba(62,39,35,0.5); text-transform:uppercase; letter-spacing:0.8px;}
+  .post-steps-col .post-lbl svg{width:12px; height:12px; flex:0 0 12px;}
+
+  .post-footer-card{padding:40px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;}
+  .post-footer-card .post-eyebrow{margin-bottom:0;}
+  .post-footer-line{font-size:19px; font-weight:600; color:#3E2723; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;}
+  .post-footer-line .post-sep{color:rgba(62,39,35,0.35); font-weight:400;}
 </style>
 </head>
 <body>
@@ -413,6 +540,99 @@
 <div class="modal-backdrop hidden" id="photoModal"></div>
 <div class="toast" id="toast"></div>
 <div class="update-banner" id="updateBanner">Neue Version verfügbar <button id="updateBtn">Aktualisieren</button></div>
+
+<div class="post-overlay-root hidden" id="postOverlay">
+  <div class="post-topbar">
+    <button class="post-close-btn" id="postCloseBtn" aria-label="Schließen">✕</button>
+    <div style="text-align:center;">
+      <h2>Post erstellen</h2>
+      <div class="post-week-label" id="postWeekLabel"></div>
+    </div>
+    <div class="post-week-nav">
+      <button id="postWeekPrev" aria-label="Vorherige Woche">‹</button>
+      <button id="postWeekNext" aria-label="Nächste Woche">›</button>
+    </div>
+  </div>
+
+  <div class="post-editor">
+    <div class="post-field-group">
+      <h3>Kopfzeile</h3>
+      <label><span>Eyebrow</span><input type="text" id="postEyebrow" value="Wochenrückblick"></label>
+      <label><span>Titel</span><input type="text" id="postTitle" value="Meine Woche in Bewegung"></label>
+      <label><span>Zeitraum</span><input type="text" id="postRange"></label>
+      <label style="margin-bottom:0;"><span>Gewicht (kg, optional)</span><input type="number" step="0.1" id="postWeight" placeholder="kein Wert"></label>
+    </div>
+
+    <div class="post-field-group">
+      <h3>Fazit</h3>
+      <textarea id="postFazit" rows="3" placeholder="wird automatisch generiert, bis du selbst etwas einträgst"></textarea>
+      <div style="margin-top:8px;"><button type="button" class="post-btn post-ghost" id="postFazitAutoBtn" style="flex:0 0 auto;">Automatisch generieren</button></div>
+    </div>
+
+    <div class="post-field-group">
+      <h3>Hintergrund</h3>
+      <input type="file" id="postBgInput" accept="image/*" style="display:none">
+      <div class="post-btn-row">
+        <button type="button" class="post-btn post-ghost" id="postChangeBgBtn">Bild wählen</button>
+        <button type="button" class="post-btn post-ghost" id="postResetBgBtn">Zurücksetzen</button>
+      </div>
+      <div class="post-hint" style="margin-top:8px;">Falls für diese Woche ein Progress-Foto gespeichert ist, wird es automatisch als Hintergrund verwendet.</div>
+    </div>
+
+    <button type="button" class="post-btn post-full" id="postDownloadBtn" style="margin-bottom:22px;">Als PNG herunterladen</button>
+
+    <div class="post-stage-outer">
+      <div class="post-stage-scaler" id="postStageScaler">
+        <div id="post-capture">
+          <img class="post-bg" id="postBgImg" src="" alt="">
+          <div class="post-scrim"></div>
+          <div class="post-canvas">
+
+            <div class="post-header post-glass">
+              <div class="post-eyebrow" id="postCEyebrow"></div>
+              <div class="post-title" id="postCTitle"></div>
+              <div class="post-range" id="postCRange"></div>
+              <div class="post-weight-pill" id="postCWeightPill" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10l2 4-7 13L5 8Z"/><path d="M9.5 4 12 9l2.5-5"/><path d="M5 8h14"/></svg>
+                <span id="postCWeightValue"></span>&nbsp;kg
+              </div>
+            </div>
+
+            <div class="post-stats">
+              <div class="post-stat post-glass">
+                <svg class="post-icon" viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+                <div class="post-label">Kalorien</div>
+                <div class="post-value" id="postStatKcal">0</div>
+                <div class="post-sub" id="postStatKcalSub">kcal diese Woche</div>
+              </div>
+              <div class="post-stat post-glass">
+                <svg class="post-icon" viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5c1 0 1.6.8 1.4 2l-.7 3.4c-.2 1 .4 1.6 1.3 1.6 1.3 0 2-1 2-2.3V5.8c0-1 .6-1.8 1.6-1.8 1.3 0 2.4 1.6 2.4 4 0 3-1.6 5-4 5-.6 0-1.1-.1-1.6-.3-.6 1.7-2 2.8-3.7 2.8-2.2 0-3.4-1.8-3.4-4.2 0-3.4 2.2-7.8 4.7-7.8z"/></svg>
+                <div class="post-label">Schritte</div>
+                <div class="post-value" id="postStatSteps">0</div>
+                <div class="post-sub" id="postStatStepsSub">Ø 0 / Tag</div>
+              </div>
+              <div class="post-stat post-glass">
+                <svg class="post-icon" viewBox="0 0 24 24" fill="none" stroke="#3E2723" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+                <div class="post-label">Trainingstage</div>
+                <div class="post-value" id="postStatDays">0/7</div>
+                <div class="post-dots" id="postStatDots"></div>
+              </div>
+            </div>
+
+            <div class="post-section-label">Aktivitäten der Woche</div>
+            <div class="post-days" id="postDaysCanvas"></div>
+
+            <div class="post-footer-card post-glass">
+              <div class="post-eyebrow">Fazit</div>
+              <div class="post-footer-line" id="postCFooterLine"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>
