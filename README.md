@@ -320,12 +320,94 @@ Editierbar bleiben auch hier Eyebrow, Titel, Zeitraum, Fazit und
 Hintergrundbild (mit automatischem Progress-Foto des Monats, falls
 vorhanden). Mit den Pfeilen oben rechts wechselst du zwischen Monaten.
 
+## 14. Löschen mit Rückgängig-Funktion
+
+Aktivitäten, Gewichtseinträge und Fotos werden beim Löschen nicht mehr
+sofort ohne Rückfrage entfernt: Nach dem Antippen erscheint unten ein
+Toast **„Aktivität gelöscht" / „Gewichtseintrag gelöscht" / „Foto
+gelöscht"** mit einem **„Rückgängig"**-Button. 5 Sekunden lang lässt
+sich die Löschung damit rückgängig machen, danach verschwindet der
+Toast automatisch und der Eintrag ist endgültig weg. Der komplette
+Reset und das Einspielen eines Backups fragen weiterhin klassisch mit
+einem Bestätigungsdialog nach, da diese Aktionen viel mehr Daten auf
+einmal betreffen.
+
+## 15. Gewicht wirklich bearbeiten
+
+Im Gewicht-Tab gibt es bei jedem Eintrag jetzt neben dem Löschen-Symbol
+(✕) auch ein Bearbeiten-Symbol (✎). Antippen füllt das Formular oben
+mit Datum und Wert des Eintrags, der Button wechselt zu
+**„Aktualisieren"**, und ein **„Abbrechen"**-Link erscheint daneben.
+So lässt sich ein Tippfehler korrigieren, ohne den Eintrag zu löschen
+und neu anzulegen.
+
+## 16. Monats- und Jahres-CSV-Export
+
+Im Monat-Tab gibt es eine neue Karte **„Daten exportieren"** mit zwei
+Buttons: **„Monat als CSV"** lädt alle Einträge des gerade angezeigten
+Monats herunter, **„Jahr als CSV"** alle Einträge des gesamten Jahres.
+Der wöchentliche Export (im Woche-Tab) bleibt zusätzlich bestehen. Die
+Dateien heißen jetzt einheitlich `lenegoeslean_woche_…`,
+`lenegoeslean_monat_…` bzw. `lenegoeslean_jahr_….csv`.
+
+## 17. Zielgewicht
+
+Im Gewicht-Tab kannst du oben ein **Zielgewicht** eintragen. Sobald
+mindestens ein Gewichtseintrag vorhanden ist, zeigt eine Fortschrittsleiste
+an, wie weit du vom Startgewicht (erster Eintrag) bis zum Ziel bereits
+gekommen bist, plus Text wie „noch 2,3 kg bis zum Ziel" bzw. „Ziel
+erreicht 🎉". Das Zielgewicht ist rein informativ und wird nirgendwo
+sonst in der App vorausgesetzt.
+
+## 18. Dunkelmodus
+
+Unter Einstellungen → Farbschema gibt es jetzt „Dunkelmodus" mit den
+Optionen **Automatisch** (folgt der Systemeinstellung deines iPhones,
+wechselt live mit), **Immer an** und **Immer aus**. Jedes der 5
+Farbschemata (Pink, Lila, Grün, Orange, Blau) hat eine eigens
+abgestimmte dunkle Variante – Akzentfarbe bleibt erhalten, Hintergrund
+und Textfarben wechseln auf ein dunkles, augenfreundliches Farbschema.
+Die Statusleiste des iPhones passt sich beim Umschalten automatisch an.
+
+## 19. Badges/Erfolge
+
+Im Trends-Tab gibt es eine neue Sektion **„Erfolge"** mit 6
+Erfolgs-Badges, die auf Basis deiner bereits vorhandenen
+Streak-Berechnung automatisch freigeschaltet werden: 7 bzw. 30 Tage
+Aktivität am Stück, 4 bzw. 12 Wochen in Folge mit erreichtem
+Wochenziel, sowie Meilensteine für insgesamt geloggte aktive Tage (50
+und 100 Tage). Nicht erreichte Badges werden ausgegraut angezeigt, so
+siehst du auf einen Blick, was als Nächstes ansteht.
+
+## 20. Körpermaße-Tracking
+
+Im Gewicht-Tab gibt es unterhalb des Gewichtsverlaufs jetzt eine
+eigene Sektion **„Körpermaße"**. Über ein Dropdown wählst du die
+Körperstelle (Taille, Hüfte, Brust, Oberschenkel, Bizeps), trägst
+Datum und Wert in cm ein und siehst – sobald mindestens 2 Einträge
+für diese Stelle vorhanden sind – einen eigenen Verlaufschart plus
+aktuellen Wert und Gesamtveränderung. Einträge lassen sich wie beim
+Gewicht bearbeiten und löschen (inkl. Rückgängig-Toast), jede
+Körperstelle führt ihren eigenen, unabhängigen Verlauf.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
 
-- Zusätzliche Körpermaße (z. B. Taille, Hüfte) mit eigenem Verlauf
-- Erinnerungen/Push-Benachrichtigungen (auf iOS aktuell technisch eingeschränkt)
-- Passwortschutz oder Face-ID-Sperre für die App
-- Motivierende Kurznachrichten/Badges bei Streaks oder erreichten Zielen
-- Cloud-Sync, falls du die App später doch auf mehreren Geräten nutzen möchtest
+- **Trainingsplan/Wiederholung** – wiederkehrende Aktivitäten (z. B. "jeden
+  Montag Krafttraining") als Vorlage anlegen, damit du sie nur noch
+  bestätigen statt komplett neu eintippen musst
+- **Erinnerungen/Push-Benachrichtigungen** (auf iOS als installierte PWA
+  aktuell technisch eingeschränkt, aber z. B. eine sanfte "heute noch
+  nichts eingetragen"-Erinnerung beim App-Öffnen wäre schon ohne Push
+  möglich)
+- **Passwortschutz oder Face-ID-Sperre** für die App
+- **Foto-Vergleich** – zwei Progress-Fotos aus unterschiedlichen Monaten
+  nebeneinander anzeigen (Vorher/Nachher-Ansicht) statt nur der
+  Einzelansicht
+- **Erweiterte CSV-Auswertung** – ein "Alle Daten (gesamter Verlauf)"-Export
+  zusätzlich zu Woche/Monat/Jahr
+- **Wochenrückblick-Erinnerungstext** – am Sonntagabend automatisch einen
+  kurzen Rückblick als Vorschlag für den Social-Media-Post vorbereiten
+- Cloud-Sync, falls du die App später doch auf mehreren Geräten nutzen
+  möchtest

@@ -40,6 +40,14 @@
   const DEFAULT_WEEKLY_GOAL_SESSIONS = 4;
   const DEFAULT_WEEKLY_GOAL_MINUTES = 150;
 
+  const MEASUREMENT_TYPES = {
+    taille:       { label: "Taille",       icon: "📏" },
+    huefte:       { label: "Hüfte",        icon: "📏" },
+    brust:        { label: "Brust",        icon: "📏" },
+    oberschenkel: { label: "Oberschenkel", icon: "📏" },
+    bizeps:       { label: "Bizeps",       icon: "📏" }
+  };
+
   const FIELD_META = {
     pace:     { label: "Pace",     unit: "min/km", type: "text",   placeholder: "z. B. 5:30" },
     distanz:  { label: "Distanz",  unit: "km",      type: "number", step: "0.01", placeholder: "z. B. 5.2" },
@@ -48,22 +56,42 @@
   };
 
   const THEMES = {
-    pink:     { name: "Pink",         swatch: "#FF4D8D", bg: "#FFF6F9", accent: "#FF4D8D", accentDark: "#E23E76", accentSoft: "#FFDCEA", accentSoft2: "#FFEEF4", border: "#FBE1EC" },
-    lavender: { name: "Flieder",      swatch: "#8B5CF6", bg: "#F8F6FF", accent: "#8B5CF6", accentDark: "#6D3FD1", accentSoft: "#E4DBFF", accentSoft2: "#F1ECFF", border: "#EDE7FB" },
-    mint:     { name: "Minze",        swatch: "#2FAE83", bg: "#F2FBF7", accent: "#2FAE83", accentDark: "#1F8F6A", accentSoft: "#CBF0E0", accentSoft2: "#E3F8EF", border: "#DFF3EA" },
-    peach:    { name: "Pfirsich",     swatch: "#FF8A4C", bg: "#FFF8F1", accent: "#FF8A4C", accentDark: "#E06B2C", accentSoft: "#FFDFC2", accentSoft2: "#FFEEDF", border: "#FBE7D6" },
-    sky:      { name: "Himmelblau",   swatch: "#3B9DE8", bg: "#F1F8FF", accent: "#3B9DE8", accentDark: "#2478C4", accentSoft: "#CFE9FF", accentSoft2: "#E6F4FF", border: "#DDEEFB" }
+    pink:     { name: "Pink",         swatch: "#FF4D8D", bg: "#FFF6F9", card: "#FFFFFF", text: "#2E2530", textMuted: "#948A93", accent: "#FF4D8D", accentDark: "#E23E76", accentSoft: "#FFDCEA", accentSoft2: "#FFEEF4", border: "#FBE1EC",
+      dark: { bg: "#1E1620", card: "#2A1D28", text: "#F5E6EE", textMuted: "#B79AAE", accent: "#FF4D8D", accentDark: "#E23E76", accentSoft: "#4A2836", accentSoft2: "#3A2030", border: "#40293A" } },
+    lavender: { name: "Flieder",      swatch: "#8B5CF6", bg: "#F8F6FF", card: "#FFFFFF", text: "#2E2530", textMuted: "#948A93", accent: "#8B5CF6", accentDark: "#6D3FD1", accentSoft: "#E4DBFF", accentSoft2: "#F1ECFF", border: "#EDE7FB",
+      dark: { bg: "#1C1830", card: "#241E3D", text: "#ECE7FA", textMuted: "#A79CC4", accent: "#8B5CF6", accentDark: "#6D3FD1", accentSoft: "#3B325C", accentSoft2: "#2E2749", border: "#3A3159" } },
+    mint:     { name: "Minze",        swatch: "#2FAE83", bg: "#F2FBF7", card: "#FFFFFF", text: "#2E2530", textMuted: "#948A93", accent: "#2FAE83", accentDark: "#1F8F6A", accentSoft: "#CBF0E0", accentSoft2: "#E3F8EF", border: "#DFF3EA",
+      dark: { bg: "#131F1B", card: "#1B2B25", text: "#E3F5EC", textMuted: "#8FB8A9", accent: "#37C795", accentDark: "#1F8F6A", accentSoft: "#1F4436", accentSoft2: "#18352A", border: "#23473A" } },
+    peach:    { name: "Pfirsich",     swatch: "#FF8A4C", bg: "#FFF8F1", card: "#FFFFFF", text: "#2E2530", textMuted: "#948A93", accent: "#FF8A4C", accentDark: "#E06B2C", accentSoft: "#FFDFC2", accentSoft2: "#FFEEDF", border: "#FBE7D6",
+      dark: { bg: "#211711", card: "#2C1D14", text: "#FBE9DC", textMuted: "#C4A28C", accent: "#FF8A4C", accentDark: "#E06B2C", accentSoft: "#4A3020", accentSoft2: "#3A2618", border: "#4A3122" } },
+    sky:      { name: "Himmelblau",   swatch: "#3B9DE8", bg: "#F1F8FF", card: "#FFFFFF", text: "#2E2530", textMuted: "#948A93", accent: "#3B9DE8", accentDark: "#2478C4", accentSoft: "#CFE9FF", accentSoft2: "#E6F4FF", border: "#DDEEFB",
+      dark: { bg: "#10192A", card: "#182437", text: "#E3EEFC", textMuted: "#91A9C4", accent: "#4FADF5", accentDark: "#2478C4", accentSoft: "#1F3A5C", accentSoft2: "#182D48", border: "#223A56" } }
   };
+
+  function resolveDarkMode(settings) {
+    const mode = (settings || Storage.getSettings()).darkMode || "auto";
+    if (mode === "on") return true;
+    if (mode === "off") return false;
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
 
   function applyTheme(key) {
     const t = THEMES[key] || THEMES.pink;
+    const isDark = resolveDarkMode();
+    const p = isDark && t.dark ? t.dark : t;
     const root = document.documentElement.style;
-    root.setProperty("--bg", t.bg);
-    root.setProperty("--accent", t.accent);
-    root.setProperty("--accent-dark", t.accentDark);
-    root.setProperty("--accent-soft", t.accentSoft);
-    root.setProperty("--accent-soft-2", t.accentSoft2);
-    root.setProperty("--border", t.border);
+    root.setProperty("--bg", p.bg);
+    root.setProperty("--card", p.card || (isDark ? "#241C22" : "#FFFFFF"));
+    root.setProperty("--text", p.text || (isDark ? "#F2EBEF" : "#2E2530"));
+    root.setProperty("--text-muted", p.textMuted || (isDark ? "#A79AAE" : "#948A93"));
+    root.setProperty("--accent", p.accent || t.accent);
+    root.setProperty("--accent-dark", p.accentDark || t.accentDark);
+    root.setProperty("--accent-soft", p.accentSoft || t.accentSoft);
+    root.setProperty("--accent-soft-2", p.accentSoft2 || t.accentSoft2);
+    root.setProperty("--border", p.border || t.border);
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) themeColorMeta.setAttribute("content", p.bg);
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
   }
 
   /* Ändert den in der App angezeigten Namen (Header, Titel, Home-Bildschirm-
@@ -191,6 +219,7 @@
       if (!this._cache.entries) this._cache.entries = {};
       if (!this._cache.challenges) this._cache.challenges = {};
       if (!this._cache.weights) this._cache.weights = [];
+      if (!this._cache.measurements) this._cache.measurements = [];
       if (!this._cache.settings) this._cache.settings = {};
       return this._cache;
     },
@@ -241,11 +270,58 @@
       data.weights = data.weights.filter((w) => w.id !== id);
       this.save();
     },
+    updateWeight(id, date, kg) {
+      const data = this.load();
+      const cur = data.weights.find((w) => w.id === id);
+      if (!cur) return;
+      // Zieldatum darf keine zweite, kollidierende Zeile erzeugen.
+      data.weights = data.weights.filter((w) => w.id === id || w.date !== date);
+      cur.date = date;
+      cur.kg = kg;
+      this.save();
+    },
+    restoreWeight(entry) {
+      const data = this.load();
+      data.weights = data.weights.filter((w) => w.id !== entry.id);
+      data.weights.push(entry);
+      this.save();
+    },
+    getMeasurements() {
+      const data = this.load();
+      return data.measurements.slice().sort((a, b) => a.date.localeCompare(b.date));
+    },
+    addMeasurement(type, date, value) {
+      const data = this.load();
+      const idx = data.measurements.findIndex((m) => m.type === type && m.date === date);
+      if (idx >= 0) data.measurements[idx] = Object.assign({}, data.measurements[idx], { value });
+      else data.measurements.push({ id: genId(), type, date, value });
+      this.save();
+    },
+    updateMeasurement(id, type, date, value) {
+      const data = this.load();
+      const cur = data.measurements.find((m) => m.id === id);
+      if (!cur) return;
+      data.measurements = data.measurements.filter((m) => m.id === id || !(m.type === type && m.date === date));
+      cur.type = type; cur.date = date; cur.value = value;
+      this.save();
+    },
+    deleteMeasurement(id) {
+      const data = this.load();
+      data.measurements = data.measurements.filter((m) => m.id !== id);
+      this.save();
+    },
+    restoreMeasurement(entry) {
+      const data = this.load();
+      data.measurements = data.measurements.filter((m) => m.id !== entry.id);
+      data.measurements.push(entry);
+      this.save();
+    },
     getSettings() {
       const data = this.load();
       return Object.assign({
-        theme: "pink", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
-        weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES
+        theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
+        weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
+        targetWeightKg: null
       }, data.settings);
     },
     saveSettings(patch) {
@@ -263,18 +339,30 @@
       if (!this._cache.entries) this._cache.entries = {};
       if (!this._cache.challenges) this._cache.challenges = {};
       if (!this._cache.weights) this._cache.weights = [];
+      if (!this._cache.measurements) this._cache.measurements = [];
       if (!this._cache.settings) this._cache.settings = {};
       this.save();
     },
     resetTrackingData() {
       const data = this.load();
-      this._cache = { entries: {}, challenges: {}, weights: [], settings: data.settings || {} };
+      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], settings: data.settings || {} };
       this.save();
     }
   };
 
   applyTheme(Storage.getSettings().theme);
   applyAppName(Storage.getSettings().appName);
+
+  // Bei "Automatisch" live auf Wechsel des Systemfarbschemas reagieren.
+  if (window.matchMedia) {
+    const darkMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemSchemeChange = () => {
+      const s = Storage.getSettings();
+      if (!s.darkMode || s.darkMode === "auto") applyTheme(s.theme);
+    };
+    if (darkMediaQuery.addEventListener) darkMediaQuery.addEventListener("change", onSystemSchemeChange);
+    else if (darkMediaQuery.addListener) darkMediaQuery.addListener(onSystemSchemeChange);
+  }
 
   /* ---------------------------------------------------------------- */
   /* IndexedDB (Fotos)                                                  */
@@ -369,10 +457,28 @@
   let toastTimer;
   function showToast(msg) {
     const t = document.getElementById("toast");
+    t.innerHTML = "";
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+  /* Für Lösch-Aktionen: Element wird sofort entfernt, aber für ein paar
+     Sekunden lässt sich die Aktion per Toast-Button rückgängig machen –
+     modernere/verzeihendere Alternative zu einem confirm()-Dialog. */
+  function showUndoToast(msg, onUndo) {
+    const t = document.getElementById("toast");
+    clearTimeout(toastTimer);
+    t.innerHTML = `<span class="toast-msg"></span><button type="button" class="toast-undo-btn">Rückgängig</button>`;
+    t.querySelector(".toast-msg").textContent = msg;
+    t.classList.add("show");
+    const hide = () => t.classList.remove("show");
+    t.querySelector(".toast-undo-btn").addEventListener("click", () => {
+      clearTimeout(toastTimer);
+      onUndo();
+      hide();
+    });
+    toastTimer = setTimeout(hide, 5000);
   }
   function genId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -556,8 +662,21 @@
     container.querySelectorAll("[data-del-activity]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-del-activity");
+        const entry = Storage.getEntry(dateISO);
+        const idx = entry.activities.findIndex((a) => a.id === id);
+        if (idx < 0) return;
+        const removed = entry.activities[idx];
+        const sport = SPORTS[removed.type] || SPORTS.custom;
+        const label = sport.custom && removed.customName ? removed.customName : sport.label;
         Storage.updateEntry(dateISO, (e) => { e.activities = e.activities.filter((a) => a.id !== id); });
         onChange();
+        showUndoToast(`${label} gelöscht`, () => {
+          Storage.updateEntry(dateISO, (e) => {
+            const pos = Math.min(idx, e.activities.length);
+            e.activities.splice(pos, 0, removed);
+          });
+          onChange();
+        });
       });
     });
 
@@ -796,10 +915,9 @@
     document.getElementById("createPostBtn").addEventListener("click", () => openPostGenerator(weekStart));
   }
 
-  function downloadWeekCSV(weekStart) {
+  function buildTrackingCSV(dates) {
     const rows = [["Datum", "Wochentag", "Schritte", "Aktivität", "Pace", "Distanz (km)", "Zeit (min)", "Kalorien", "Challenge erledigt"]];
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(weekStart, i);
+    dates.forEach((d) => {
       const iso = toISO(d);
       const entry = Storage.getEntry(iso);
       const wd = WEEKDAYS_LONG[d.getDay()];
@@ -812,17 +930,38 @@
           rows.push([iso, wd, entry.steps ?? "", label, a.pace ?? "", a.distanz ?? "", a.zeit ?? "", a.kalorien ?? "", entry.challengeChecked ? "Ja" : "Nein"]);
         });
       }
-    }
-    const csv = "﻿" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    });
+    return "﻿" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  }
+
+  function triggerCSVDownload(csv, filename) {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `fitpaw_${weekKey(weekStart)}.csv`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  function downloadWeekCSV(weekStart) {
+    const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    triggerCSVDownload(buildTrackingCSV(dates), `lenegoeslean_${weekKey(weekStart)}.csv`);
+  }
+
+  function downloadMonthCSV(year, month) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
+    triggerCSVDownload(buildTrackingCSV(dates), `lenegoeslean_${year}-${String(month + 1).padStart(2, "0")}.csv`);
+  }
+
+  function downloadYearCSV(year) {
+    const start = new Date(year, 0, 1);
+    const daysInYear = Math.round((new Date(year, 11, 31) - start) / 86400000) + 1;
+    const dates = Array.from({ length: daysInYear }, (_, i) => addDays(start, i));
+    triggerCSVDownload(buildTrackingCSV(dates), `lenegoeslean_${year}.csv`);
   }
 
   /* ---------------------------------------------------------------- */
@@ -1704,11 +1843,20 @@
         <div class="small muted" style="margin-bottom:10px;">Erstellt automatisch aus den Daten dieses Monats einen fertig gestalteten Monatsrückblick zum Teilen.</div>
         <button class="btn btn-secondary btn-block" id="createMonthPostBtn">📸 Monats-Post erstellen</button>
       </div>
+
+      <h2 class="section-title">Daten exportieren</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Lädt alle Einträge als CSV-Datei herunter (z. B. zum Sichern oder für Excel).</div>
+        <button class="btn btn-secondary btn-block" id="downloadMonthBtn">⤓ Diesen Monat herunterladen</button>
+        <button class="btn btn-ghost btn-block" id="downloadYearBtn" style="margin-top:10px;">⤓ Ganzes Jahr (${year}) herunterladen</button>
+      </div>
     `;
 
     document.getElementById("monPrev").addEventListener("click", () => { monatAnchor = new Date(year, month - 1, 1); renderMonat(); });
     document.getElementById("monNext").addEventListener("click", () => { monatAnchor = new Date(year, month + 1, 1); renderMonat(); });
     document.getElementById("createMonthPostBtn").addEventListener("click", () => openMonthPostGenerator(year, month));
+    document.getElementById("downloadMonthBtn").addEventListener("click", () => downloadMonthCSV(year, month));
+    document.getElementById("downloadYearBtn").addEventListener("click", () => downloadYearCSV(year));
   }
 
   /* ---------------------------------------------------------------- */
@@ -1775,9 +1923,14 @@
     backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.classList.add("hidden"); }, { once: true });
     document.getElementById("closePhotoModal").addEventListener("click", () => backdrop.classList.add("hidden"));
     document.getElementById("deletePhotoBtn").addEventListener("click", async () => {
+      const restoreData = { date: photo.date, note: photo.note, blob: photo.blob, ts: photo.ts };
       await PhotoDB.remove(photo.id);
       backdrop.classList.add("hidden");
       renderFotos();
+      showUndoToast("Foto gelöscht", async () => {
+        await PhotoDB.add(restoreData);
+        renderFotos();
+      });
     });
   }
 
@@ -1927,7 +2080,48 @@
       current++;
       cursor = addDays(cursor, -1);
     }
-    return { current, longest };
+    return { current, longest, totalActiveDays: activeDates.length };
+  }
+
+  function computeWeeklyGoalStreak() {
+    const goals = Storage.getSettings();
+    if (goals.weeklyGoalMode !== "sessions" && goals.weeklyGoalMode !== "minutes") return 0;
+    const isSessions = goals.weeklyGoalMode === "sessions";
+    const target = isSessions ? (goals.weeklyGoalSessions || DEFAULT_WEEKLY_GOAL_SESSIONS) : (goals.weeklyGoalMinutes || DEFAULT_WEEKLY_GOAL_MINUTES);
+    let streak = 0;
+    let cursor = addDays(startOfWeek(new Date()), -7); // letzte vollständig abgeschlossene Woche
+    for (let i = 0; i < 104; i++) {
+      const agg = weekAggregate(cursor);
+      const val = isSessions ? agg.sessionsCount : agg.minutes;
+      if (val > 0 && val >= target) { streak++; cursor = addDays(cursor, -7); }
+      else break;
+    }
+    return streak;
+  }
+
+  function computeBadges() {
+    const streaks = computeStreaks();
+    const weeklyStreak = computeWeeklyGoalStreak();
+    const chAll = computeChallengeHistory({ limit: 1000 });
+    const totalWorkouts = getAllActivitiesFlat().filter((a) => a.type !== "restday").length;
+    return [
+      { icon: "🔥", label: "7-Tage-Serie", sub: "7 Tage in Folge aktiv", earned: streaks.longest >= 7 },
+      { icon: "🔥", label: "30-Tage-Serie", sub: "30 Tage in Folge aktiv", earned: streaks.longest >= 30 },
+      { icon: "🎯", label: "Zielstrebig", sub: "4 Wochen Wochenziel in Folge", earned: weeklyStreak >= 4 },
+      { icon: "🏆", label: "Perfekte Woche", sub: "Challenge 7/7 Tage geschafft", earned: chAll.perfectWeeks >= 1 },
+      { icon: "💪", label: "100 Einheiten", sub: "100 Trainingseinheiten geloggt", earned: totalWorkouts >= 100 },
+      { icon: "📆", label: "50 aktive Tage", sub: "50 Tage insgesamt aktiv", earned: streaks.totalActiveDays >= 50 }
+    ];
+  }
+
+  function buildBadgesHTML(badges) {
+    return `<div class="badge-grid">` + badges.map((b) => `
+      <div class="badge-item${b.earned ? " earned" : ""}">
+        <div class="badge-icon">${b.icon}</div>
+        <div class="badge-label">${esc(b.label)}</div>
+        <div class="badge-sub">${esc(b.sub)}</div>
+      </div>
+    `).join("") + `</div>`;
   }
 
   function computeBests() {
@@ -2085,6 +2279,9 @@
       <h2 class="section-title">Bestwerte</h2>
       <div class="card">${bestRows}</div>
 
+      <h2 class="section-title">Erfolge</h2>
+      <div class="card">${buildBadgesHTML(computeBadges())}</div>
+
       <h2 class="section-title">Beliebteste Sportarten</h2>
       <div class="card">${topSportsHTML}</div>
 
@@ -2161,23 +2358,23 @@
   /* Tab: Gewicht                                                       */
   /* ---------------------------------------------------------------- */
 
-  function buildWeightChartSVG(weights) {
-    if (weights.length < 2) return null;
+  function buildLineChartSVG(points, color, unit) {
+    if (points.length < 2) return null;
     const w = 300, h = 140, padX = 10, padY = 16;
-    const values = weights.map((p) => p.kg);
+    const values = points.map((p) => p.value);
     const min = Math.min(...values), max = Math.max(...values);
     const range = (max - min) || 1;
-    const stepX = weights.length > 1 ? (w - padX * 2) / (weights.length - 1) : 0;
-    const points = weights.map((p, i) => ({
+    const stepX = points.length > 1 ? (w - padX * 2) / (points.length - 1) : 0;
+    const pts = points.map((p, i) => ({
       x: padX + i * stepX,
-      y: padY + (h - padY * 2) * (1 - (p.kg - min) / range)
+      y: padY + (h - padY * 2) * (1 - (p.value - min) / range)
     }));
-    const pathD = points.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + "," + p.y.toFixed(1)).join(" ");
-    const dots = points.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#FF4D8D"/>`).join("");
+    const pathD = pts.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + "," + p.y.toFixed(1)).join(" ");
+    const dots = pts.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${color}"/>`).join("");
     return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-      <text x="${padX}" y="12" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${max.toFixed(1)} kg</text>
-      <text x="${padX}" y="${h - 4}" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${min.toFixed(1)} kg</text>
-      <path d="${pathD}" fill="none" stroke="#FF4D8D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="${padX}" y="12" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${max.toFixed(1)}${unit}</text>
+      <text x="${padX}" y="${h - 4}" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${min.toFixed(1)}${unit}</text>
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       ${dots}
     </svg>`;
   }
@@ -2190,9 +2387,36 @@
     return best;
   }
 
+  function computeWeightGoalProgress(weights, targetKg) {
+    if (!weights.length || targetKg == null) return null;
+    const start = weights[0].kg;
+    const current = weights[weights.length - 1].kg;
+    if (start === targetKg) return null;
+    const reached = (start > targetKg && current <= targetKg) || (start < targetKg && current >= targetKg);
+    const pct = reached ? 100 : Math.max(0, Math.min(100, Math.round(((start - current) / (start - targetKg)) * 100)));
+    return { pct, remaining: Math.abs(current - targetKg), reached };
+  }
+
+  let measurementSelectedType = "taille";
+
+  function buildStatPairHTML(points, unit, currentLabel, changeLabel) {
+    if (!points.length) return `<div class="empty-hint">Noch keine Einträge.</div>`;
+    const latest = points[points.length - 1];
+    const first = points[0];
+    const change = first.id !== latest.id ? latest.value - first.value : null;
+    const fmtChange = (v) => (v == null ? "–" : `${v > 0 ? "+" : ""}${v.toFixed(1)} ${unit}`);
+    return `
+      <div class="stat-grid" style="margin-bottom:0;">
+        <div class="stat-box"><div class="stat-value">${latest.value.toFixed(1)} ${unit}</div><div class="stat-label">${currentLabel}</div></div>
+        <div class="stat-box"><div class="stat-value">${fmtChange(change)}</div><div class="stat-label">${changeLabel}</div></div>
+      </div>
+    `;
+  }
+
   function renderGewicht() {
     const container = document.getElementById("tab-gewicht");
     const weights = Storage.getWeights();
+    const settings = Storage.getSettings();
     const todayISO = toISO(new Date());
     const latest = weights.length ? weights[weights.length - 1] : null;
     const first = weights.length ? weights[0] : null;
@@ -2204,28 +2428,62 @@
       const refPoint = findNearestWeightBefore(weights.filter((w) => w.date !== latest.date), thirtyDaysAgoISO) || findNearestWeightBefore(weights.filter((w) => w.date !== latest.date), latest.date);
       const monthChange = refPoint ? latest.kg - refPoint.kg : null;
       const fmtChange = (v) => (v == null ? "–" : `${v > 0 ? "+" : ""}${v.toFixed(1)} kg`);
+      const goalProgress = computeWeightGoalProgress(weights, settings.targetWeightKg);
       statsHTML = `
         <div class="stat-grid" style="margin-bottom:0;">
           <div class="stat-box"><div class="stat-value">${latest.kg.toFixed(1)} kg</div><div class="stat-label">AKTUELLES GEWICHT</div></div>
           <div class="stat-box"><div class="stat-value">${fmtChange(monthChange)}</div><div class="stat-label">LETZTE 30 TAGE</div></div>
         </div>
         <div class="small muted" style="margin-top:12px;">Gesamtverlauf seit ${formatShortDate(fromISO(first.date))}: <strong>${fmtChange(totalChange)}</strong></div>
+        ${goalProgress ? `
+          <div class="row-between" style="margin-top:14px;">
+            <span class="field-label" style="margin-bottom:0;">Zielgewicht ${settings.targetWeightKg.toFixed(1)} kg</span>
+            <span class="small muted">${goalProgress.reached ? "🎯 erreicht!" : `noch ${goalProgress.remaining.toFixed(1)} kg`}</span>
+          </div>
+          <div class="progress-bar-lg" style="margin-top:8px;"><div class="fill" style="width:${goalProgress.pct}%"></div></div>
+        ` : ""}
       `;
     }
 
-    const chartSVG = buildWeightChartSVG(weights);
+    const chartSVG = buildLineChartSVG(weights.map((w) => ({ id: w.id, date: w.date, value: w.kg })), "#FF4D8D", " kg");
     const chartHTML = chartSVG ? chartSVG : `<div class="chart-empty">Sobald mindestens 2 Einträge vorhanden sind, siehst du hier den Verlauf als Diagramm.</div>`;
 
     const historyRows = weights.length
       ? weights.slice().reverse().map((w) => `
         <div class="type-row">
           <span class="small">${formatWeekdayDate(fromISO(w.date))}</span>
-          <span style="display:flex; align-items:center; gap:10px;">
+          <span style="display:flex; align-items:center; gap:6px;">
             <strong>${w.kg.toFixed(1)} kg</strong>
-            <button class="del-btn" data-del-weight="${w.id}" aria-label="Löschen">✕</button>
+            <div class="item-actions">
+              <button type="button" class="edit-btn" data-edit-weight="${w.id}" aria-label="Bearbeiten">✎</button>
+              <button class="del-btn" data-del-weight="${w.id}" aria-label="Löschen">✕</button>
+            </div>
           </span>
         </div>`).join("")
       : `<div class="empty-hint">Noch keine Einträge.</div>`;
+
+    const allMeasurements = Storage.getMeasurements();
+    const measurePoints = allMeasurements.filter((m) => m.type === measurementSelectedType);
+    const measureUnit = "cm";
+    const measureTypeOptions = Object.keys(MEASUREMENT_TYPES).map((k) =>
+      `<option value="${k}" ${k === measurementSelectedType ? "selected" : ""}>${MEASUREMENT_TYPES[k].label}</option>`
+    ).join("");
+    const measureStatsHTML = buildStatPairHTML(measurePoints, measureUnit, "AKTUELLER WERT", "GESAMTVERLAUF");
+    const measureChartSVG = buildLineChartSVG(measurePoints, "#8B5CF6", " cm");
+    const measureChartHTML = measureChartSVG ? measureChartSVG : `<div class="chart-empty">Sobald mindestens 2 Einträge vorhanden sind, siehst du hier den Verlauf als Diagramm.</div>`;
+    const measureHistoryHTML = measurePoints.length
+      ? measurePoints.slice().reverse().map((m) => `
+        <div class="type-row">
+          <span class="small">${formatWeekdayDate(fromISO(m.date))}</span>
+          <span style="display:flex; align-items:center; gap:6px;">
+            <strong>${m.value.toFixed(1)} cm</strong>
+            <div class="item-actions">
+              <button type="button" class="edit-btn" data-edit-measure="${m.id}" aria-label="Bearbeiten">✎</button>
+              <button class="del-btn" data-del-measure="${m.id}" aria-label="Löschen">✕</button>
+            </div>
+          </span>
+        </div>`).join("")
+      : `<div class="empty-hint">Noch keine Einträge für diese Körperstelle.</div>`;
 
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">Gewicht</h2>
@@ -2233,6 +2491,15 @@
 
       <h2 class="section-title">Verlauf</h2>
       <div class="card chart-card">${chartHTML}</div>
+
+      <h2 class="section-title">Zielgewicht</h2>
+      <div class="card">
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Ziel (kg)</label>
+          <input type="number" id="targetWeightInput" step="0.1" min="0" value="${settings.targetWeightKg != null ? settings.targetWeightKg : ""}" placeholder="optional">
+        </div>
+        <button class="btn btn-secondary btn-block" id="saveTargetWeightBtn" style="margin-top:12px;">Zielgewicht speichern</button>
+      </div>
 
       <h2 class="section-title">Eintragen</h2>
       <div class="card">
@@ -2247,28 +2514,163 @@
               <input type="number" id="weightInput" step="0.1" min="0" placeholder="z. B. 68.4">
             </div>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Speichern</button>
+          <button type="submit" class="btn btn-primary btn-block" id="weightSubmitBtn">Speichern</button>
+          <button type="button" class="btn btn-ghost btn-block" id="cancelWeightEditBtn" style="margin-top:8px; display:none;">Bearbeiten abbrechen</button>
         </form>
       </div>
 
       <h2 class="section-title">Einträge</h2>
       <div class="card">${historyRows}</div>
+
+      <h2 class="section-title">Körpermaße</h2>
+      <div class="card">
+        <div class="field" style="margin-bottom:14px;">
+          <label class="field-label">Körperstelle</label>
+          <select id="measureTypeSelect">${measureTypeOptions}</select>
+        </div>
+        ${measureStatsHTML}
+        <div class="chart-card" style="margin-top:14px;">${measureChartHTML}</div>
+      </div>
+
+      <h2 class="section-title">Maß eintragen</h2>
+      <div class="card">
+        <form id="measureForm">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Datum</label>
+              <input type="date" id="measureDate" value="${todayISO}" max="${todayISO}">
+            </div>
+            <div class="field">
+              <label class="field-label">Wert (cm)</label>
+              <input type="number" id="measureInput" step="0.1" min="0" placeholder="z. B. 74.5">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="measureSubmitBtn">Speichern</button>
+          <button type="button" class="btn btn-ghost btn-block" id="cancelMeasureEditBtn" style="margin-top:8px; display:none;">Bearbeiten abbrechen</button>
+        </form>
+      </div>
+
+      <h2 class="section-title">Maße – Verlauf</h2>
+      <div class="card">${measureHistoryHTML}</div>
     `;
+
+    document.getElementById("saveTargetWeightBtn").addEventListener("click", () => {
+      const raw = document.getElementById("targetWeightInput").value;
+      const val = raw === "" ? null : parseFloat(raw);
+      if (raw !== "" && (!val || val <= 0)) { showToast("Bitte ein gültiges Zielgewicht eingeben"); return; }
+      Storage.saveSettings({ targetWeightKg: val });
+      showToast(val == null ? "Zielgewicht entfernt" : "Zielgewicht gespeichert");
+      renderGewicht();
+    });
+
+    function resetWeightFormMode() {
+      editingWeightId = null;
+      document.getElementById("weightDate").value = todayISO;
+      document.getElementById("weightInput").value = "";
+      document.getElementById("weightSubmitBtn").textContent = "Speichern";
+      document.getElementById("cancelWeightEditBtn").style.display = "none";
+    }
+    let editingWeightId = null;
+    container.querySelectorAll("[data-edit-weight]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit-weight");
+        const w = weights.find((x) => x.id === id);
+        if (!w) return;
+        editingWeightId = id;
+        document.getElementById("weightDate").value = w.date;
+        document.getElementById("weightInput").value = w.kg;
+        document.getElementById("weightSubmitBtn").textContent = "Aktualisieren";
+        document.getElementById("cancelWeightEditBtn").style.display = "block";
+        document.getElementById("weightInput").focus();
+      });
+    });
+    document.getElementById("cancelWeightEditBtn").addEventListener("click", resetWeightFormMode);
 
     document.getElementById("weightForm").addEventListener("submit", (ev) => {
       ev.preventDefault();
       const dateVal = document.getElementById("weightDate").value || todayISO;
       const kgVal = parseFloat(document.getElementById("weightInput").value);
       if (!kgVal || kgVal <= 0) { showToast("Bitte ein gültiges Gewicht eingeben"); return; }
-      Storage.addWeight(dateVal, kgVal);
-      showToast("Gewicht gespeichert");
+      if (editingWeightId) {
+        Storage.updateWeight(editingWeightId, dateVal, kgVal);
+        showToast("Gewicht aktualisiert");
+      } else {
+        Storage.addWeight(dateVal, kgVal);
+        showToast("Gewicht gespeichert");
+      }
       renderGewicht();
     });
 
     container.querySelectorAll("[data-del-weight]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        Storage.deleteWeight(btn.getAttribute("data-del-weight"));
+        const id = btn.getAttribute("data-del-weight");
+        const removed = weights.find((w) => w.id === id);
+        Storage.deleteWeight(id);
         renderGewicht();
+        if (removed) {
+          showUndoToast("Gewichtseintrag gelöscht", () => {
+            Storage.restoreWeight(removed);
+            renderGewicht();
+          });
+        }
+      });
+    });
+
+    document.getElementById("measureTypeSelect").addEventListener("change", (e) => {
+      measurementSelectedType = e.target.value;
+      renderGewicht();
+    });
+
+    let editingMeasureId = null;
+    function resetMeasureFormMode() {
+      editingMeasureId = null;
+      document.getElementById("measureDate").value = todayISO;
+      document.getElementById("measureInput").value = "";
+      document.getElementById("measureSubmitBtn").textContent = "Speichern";
+      document.getElementById("cancelMeasureEditBtn").style.display = "none";
+    }
+    container.querySelectorAll("[data-edit-measure]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit-measure");
+        const m = measurePoints.find((x) => x.id === id);
+        if (!m) return;
+        editingMeasureId = id;
+        document.getElementById("measureDate").value = m.date;
+        document.getElementById("measureInput").value = m.value;
+        document.getElementById("measureSubmitBtn").textContent = "Aktualisieren";
+        document.getElementById("cancelMeasureEditBtn").style.display = "block";
+        document.getElementById("measureInput").focus();
+      });
+    });
+    document.getElementById("cancelMeasureEditBtn").addEventListener("click", resetMeasureFormMode);
+
+    document.getElementById("measureForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const dateVal = document.getElementById("measureDate").value || todayISO;
+      const val = parseFloat(document.getElementById("measureInput").value);
+      if (!val || val <= 0) { showToast("Bitte einen gültigen Wert eingeben"); return; }
+      if (editingMeasureId) {
+        Storage.updateMeasurement(editingMeasureId, measurementSelectedType, dateVal, val);
+        showToast("Maß aktualisiert");
+      } else {
+        Storage.addMeasurement(measurementSelectedType, dateVal, val);
+        showToast("Maß gespeichert");
+      }
+      renderGewicht();
+    });
+
+    container.querySelectorAll("[data-del-measure]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-measure");
+        const removed = measurePoints.find((m) => m.id === id);
+        Storage.deleteMeasurement(id);
+        renderGewicht();
+        if (removed) {
+          showUndoToast("Maß gelöscht", () => {
+            Storage.restoreMeasurement(removed);
+            renderGewicht();
+          });
+        }
       });
     });
   }
@@ -2309,6 +2711,14 @@
       <h2 class="section-title">Farbschema</h2>
       <div class="card">
         <div class="theme-swatch-row">${themeSwatches}</div>
+        <div class="field" style="margin-top:16px; margin-bottom:0;">
+          <label class="field-label">Dunkelmodus</label>
+          <select id="darkModeInput">
+            <option value="auto" ${settings.darkMode === "auto" ? "selected" : ""}>Automatisch (Systemeinstellung)</option>
+            <option value="on" ${settings.darkMode === "on" ? "selected" : ""}>Immer an</option>
+            <option value="off" ${settings.darkMode === "off" ? "selected" : ""}>Immer aus</option>
+          </select>
+        </div>
       </div>
 
       <h2 class="section-title">Tagesziele</h2>
@@ -2379,6 +2789,11 @@
         applyTheme(key);
         renderEinstellungen();
       });
+    });
+
+    document.getElementById("darkModeInput").addEventListener("change", (e) => {
+      Storage.saveSettings({ darkMode: e.target.value });
+      applyTheme(Storage.getSettings().theme);
     });
 
     document.getElementById("saveGoalsBtn").addEventListener("click", () => {
