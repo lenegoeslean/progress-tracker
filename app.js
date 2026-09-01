@@ -1064,6 +1064,40 @@
     document.body.style.overflow = "";
   }
 
+  /* iOS Safari (vor allem als installierte Home-Bildschirm-App im
+     "standalone"-Modus) ignoriert das download-Attribut von <a>-Links
+     und lässt sich per JS auch nicht zum Öffnen einer neuen Ansicht für
+     eine data:-URL bewegen – ein Klick auf einen klassischen Download-
+     Link passiert dort einfach gar nichts. Deshalb: zuerst die native
+     Teilen-Funktion versuchen (öffnet das iOS-Sheet mit "Bild sichern"),
+     und nur wenn die nicht verfügbar ist, das Bild großformatig anzeigen
+     mit der Anweisung "antippen & halten" (funktioniert überall, auch
+     offline und in der installierten App). Auf dem Desktop/Android
+     bleibt zusätzlich der klassische Download-Link als schnellster Weg.
+  */
+  async function sharePostImage(blob, filename) {
+    if (!navigator.share || !navigator.canShare) return false;
+    try {
+      const file = new File([blob], filename, { type: "image/png" });
+      if (!navigator.canShare({ files: [file] })) return false;
+      await navigator.share({ files: [file], title: filename });
+      return true;
+    } catch (err) {
+      // Nutzer hat das Teilen-Sheet abgebrochen -> kein Fehler, einfach fertig.
+      if (err && err.name === "AbortError") return true;
+      return false;
+    }
+  }
+
+  function showPostSaveFallback(blob) {
+    const overlay = document.getElementById("postSaveFallback");
+    const img = document.getElementById("postSaveFallbackImg");
+    const url = URL.createObjectURL(blob);
+    img.src = url;
+    img.dataset.blobUrl = url;
+    overlay.classList.remove("hidden");
+  }
+
   function downloadPostPNG() {
     const btn = document.getElementById("postDownloadBtn");
     if (typeof html2canvas === "undefined") {
@@ -1076,7 +1110,6 @@
 
     const capture = document.getElementById("post-capture");
     const scaler = document.getElementById("postStageScaler");
-    const prevTransform = scaler.style.transform;
     scaler.style.transform = "none";
 
     function restore() {
@@ -1088,11 +1121,30 @@
     try {
       html2canvas(capture, { width: 1080, height: 1920, scale: 2, backgroundColor: null, useCORS: true })
         .then((canvas) => {
-          const link = document.createElement("a");
-          link.download = `wochenrueckblick_${weekKey(postWeekStart)}.png`;
-          link.href = canvas.toDataURL("image/png");
-          link.click();
-          restore();
+          canvas.toBlob(async (blob) => {
+            if (!blob) { alert("Export fehlgeschlagen: Bild konnte nicht erzeugt werden."); restore(); return; }
+            const filename = `wochenrueckblick_${weekKey(postWeekStart)}.png`;
+
+            const shared = await sharePostImage(blob, filename);
+            if (shared) { restore(); return; }
+
+            const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+            if (!isIOS) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.download = filename;
+              link.href = url;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 3000);
+              restore();
+              return;
+            }
+
+            showPostSaveFallback(blob);
+            restore();
+          }, "image/png");
         })
         .catch((err) => { alert("Export fehlgeschlagen: " + err); restore(); });
     } catch (err) {
@@ -1133,6 +1185,13 @@
       setPostBackgroundForWeek(postWeekStart, addDays(postWeekStart, 6));
     });
     document.getElementById("postDownloadBtn").addEventListener("click", downloadPostPNG);
+    document.getElementById("postSaveFallbackCloseBtn").addEventListener("click", () => {
+      const overlay = document.getElementById("postSaveFallback");
+      const img = document.getElementById("postSaveFallbackImg");
+      if (img.dataset.blobUrl) { URL.revokeObjectURL(img.dataset.blobUrl); delete img.dataset.blobUrl; }
+      img.src = "";
+      overlay.classList.add("hidden");
+    });
     window.addEventListener("resize", fitPostStage);
   }
 

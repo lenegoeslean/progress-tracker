@@ -500,6 +500,16 @@
   .post-footer-card .post-eyebrow{margin-bottom:0;}
   .post-footer-line{font-size:19px; font-weight:600; color:#3E2723; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;}
   .post-footer-line .post-sep{color:rgba(62,39,35,0.35); font-weight:400;}
+
+  /* Fallback für iOS: kein "download"-Attribut & kein Web-Share verfügbar
+     -> Bild groß anzeigen, per "antippen & halten" in Fotos sichern. */
+  .post-save-fallback{position:fixed; inset:0; z-index:210; background:rgba(28,18,14,0.94); display:flex; align-items:center; justify-content:center; padding:24px; overflow-y:auto;}
+  .post-save-fallback.hidden{display:none;}
+  .post-save-fallback-inner{max-width:420px; width:100%; text-align:center; margin:auto;}
+  .post-save-fallback-hint{color:#F7EDE3; font-size:14.5px; font-weight:600; line-height:1.55; margin-bottom:16px;}
+  .post-save-fallback-hint strong{color:#fff;}
+  .post-save-fallback-inner img{width:100%; border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,0.45); -webkit-touch-callout:default; -webkit-user-select:auto; user-select:auto;}
+  .post-save-fallback-inner .post-btn{margin-top:18px;}
 </style>
 </head>
 <body>
@@ -630,6 +640,14 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="post-save-fallback hidden" id="postSaveFallback">
+    <div class="post-save-fallback-inner">
+      <p class="post-save-fallback-hint">Dein Post ist fertig! Da dein iPhone hier keinen direkten Download erlaubt: Bild unten <strong>antippen und halten</strong>, dann „Zu Fotos hinzufügen" wählen.</p>
+      <img id="postSaveFallbackImg" src="" alt="Fertiger Wochenrückblick-Post">
+      <button type="button" class="post-btn post-full" id="postSaveFallbackCloseBtn">Fertig</button>
     </div>
   </div>
 </div>

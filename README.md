@@ -278,9 +278,18 @@ bleiben:
 Mit den Pfeilen oben rechts lässt sich zwischen Wochen wechseln (die
 automatisch befüllten Felder aktualisieren sich dabei, Titel und
 Eyebrow bleiben erhalten). Der Button **„Als PNG herunterladen"**
-speichert den fertigen Post als Bilddatei – bereit zum Teilen. Auch
-dieser Export läuft komplett lokal auf deinem Gerät; es werden keine
-Daten irgendwohin hochgeladen.
+erstellt das fertige Bild – bereit zum Teilen. Auch dieser Export läuft
+komplett lokal auf deinem Gerät; es werden keine Daten irgendwohin
+hochgeladen.
+
+**Wichtig für iPhone/iOS:** Safari erlaubt auf iOS keinen klassischen
+Datei-Download per Link – das gilt besonders innerhalb der installierten
+Home-Bildschirm-App. Der Button nutzt deshalb zuerst die native
+Teilen-Funktion (öffnet das iOS-Sheet mit „Bild sichern" direkt in die
+Fotos). Ist das nicht verfügbar, wird das fertige Bild stattdessen
+großformatig angezeigt – dann einfach **antippen und halten** und „Zu
+Fotos hinzufügen" wählen. Auf dem Desktop/Android lädt der Button das
+Bild wie gewohnt direkt herunter.
 
 ## Mögliche nächste Schritte
 
