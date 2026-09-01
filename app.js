@@ -985,20 +985,21 @@
     }
   }
 
-  function buildDefaultPostBg() {
+  function buildDefaultPostBg(width, height) {
+    width = width || 1080; height = height || 1920;
     const c = document.createElement("canvas");
-    c.width = 1080; c.height = 1920;
+    c.width = width; c.height = height;
     const ctx = c.getContext("2d");
-    const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
+    const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#F7EFE6");
     grad.addColorStop(0.5, "#F1E0D6");
     grad.addColorStop(1, "#E7CBB8");
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 1080, 1920);
+    ctx.fillRect(0, 0, width, height);
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.arc(850, 220, 260, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(120, 1650, 300, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(width * 0.79, height * 0.115, width * 0.24, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(width * 0.11, height * 0.86, width * 0.28, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
     return c.toDataURL("image/png");
   }
@@ -1193,6 +1194,308 @@
       overlay.classList.add("hidden");
     });
     window.addEventListener("resize", fitPostStage);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Post-Generator (Monatsrückblick)                                   */
+  /* Gleiches Design/Schema wie der Wochen-Post (echte Daten, feste     */
+  /* Creme/Braun-Optik, Icons/Share/Fallback werden wiederverwendet),   */
+  /* aber im Instagram-Post-Format 4:5 (1080×1350) statt Story-Format.  */
+  /* ---------------------------------------------------------------- */
+
+  let postmYear = null;
+  let postmMonth = null; // 0-basiert
+  let postmFazitTouched = false;
+
+  function computeMonthPostData(year, month) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
+
+    let steps = 0, stepDays = 0, minutes = 0, calories = 0, activeDaysWorkout = 0, restDaysCount = 0, trackedDays = 0;
+    const byType = {};
+    let bestDay = null;
+
+    dates.forEach((d) => {
+      const entry = Storage.getEntry(toISO(d));
+      const hasSteps = !!entry.steps;
+      const activities = entry.activities || [];
+      const hasRest = activities.some((a) => a.type === "restday");
+      const hasWorkout = activities.some((a) => a.type !== "restday");
+
+      if (hasSteps) { steps += entry.steps; stepDays++; }
+      if (hasWorkout) activeDaysWorkout++;
+      if (hasRest) restDaysCount++;
+      if (hasSteps || hasWorkout || hasRest) trackedDays++;
+
+      const realToday = [];
+      activities.forEach((a) => {
+        if (a.type === "restday") return;
+        const m = Number(a.zeit) || 0, k = Number(a.kalorien) || 0;
+        minutes += m; calories += k;
+        const sport = SPORTS[a.type] || SPORTS.custom;
+        const label = sport.custom && a.customName ? a.customName : sport.label;
+        if (!byType[a.type]) byType[a.type] = { count: 0, calories: 0, label, type: a.type };
+        byType[a.type].count++;
+        byType[a.type].calories += k;
+        realToday.push({ label, zeit: m, kalorien: k });
+      });
+
+      if (hasSteps && (!bestDay || entry.steps > bestDay.steps)) {
+        bestDay = {
+          date: d,
+          steps: entry.steps,
+          labels: realToday.map((a) => a.label),
+          totalMin: realToday.reduce((s, a) => s + a.zeit, 0),
+          totalKcal: realToday.reduce((s, a) => s + a.kalorien, 0)
+        };
+      }
+    });
+
+    const topTypes = Object.keys(byType).sort((a, b) => byType[b].count - byType[a].count || byType[b].calories - byType[a].calories);
+
+    return { daysInMonth, steps, stepDays, minutes, calories, activeDaysWorkout, restDaysCount, trackedDays, byType, topTypes, bestDay };
+  }
+
+  function computeMonthWeightStat(year, month) {
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0);
+    const startISO = toISO(monthStart), endISO = toISO(monthEnd);
+    const all = Storage.getWeights(); // aufsteigend sortiert
+    const inMonth = all.filter((w) => w.date >= startISO && w.date <= endISO);
+    if (!inMonth.length) return null;
+    const last = inMonth[inMonth.length - 1];
+    const before = all.filter((w) => w.date < startISO);
+    const baseline = inMonth.length > 1 ? inMonth[0] : (before.length ? before[before.length - 1] : null);
+    const delta = baseline ? Math.round((last.kg - baseline.kg) * 10) / 10 : null;
+    return { lastKg: last.kg, lastDate: fromISO(last.date), delta };
+  }
+
+  function buildPostmActivitiesHTML(data) {
+    if (!data.topTypes.length) {
+      return `<div class="postm-act-more">Noch keine Aktivitäten in diesem Monat geloggt.</div>`;
+    }
+    const top = data.topTypes.slice(0, 4);
+    const rest = data.topTypes.slice(4);
+    const rows = top.map((k) => {
+      const t = data.byType[k];
+      return `<div class="postm-act-row">
+        <div class="postm-act-icon">${getPostIcon(t.type)}</div>
+        <div class="postm-act-text"><div class="postm-name">${esc(t.label)}</div><div class="postm-meta">${Math.round(t.calories).toLocaleString("de-DE")} kcal gesamt</div></div>
+        <div class="postm-act-count">×${t.count}</div>
+      </div>`;
+    }).join("");
+    const moreHTML = rest.length
+      ? `<div class="postm-act-more">+ ${rest.map((k) => esc(data.byType[k].label)).join(", ")}</div>`
+      : "";
+    return rows + moreHTML;
+  }
+
+  function renderPostmPreview() {
+    if (postmYear == null) return;
+    const data = computeMonthPostData(postmYear, postmMonth);
+    const weightStat = computeMonthWeightStat(postmYear, postmMonth);
+
+    document.getElementById("postmCEyebrow").textContent = document.getElementById("postmEyebrow").value;
+    document.getElementById("postmCTitle").textContent = document.getElementById("postmTitle").value;
+    document.getElementById("postmCRange").textContent = document.getElementById("postmRange").value;
+
+    document.getElementById("postmStatSteps").textContent = Math.round(data.steps).toLocaleString("de-DE");
+    document.getElementById("postmStatStepsSub").textContent = data.stepDays > 0
+      ? `Ø ${Math.round(data.steps / data.stepDays).toLocaleString("de-DE")} / Tag`
+      : "–";
+
+    document.getElementById("postmStatKcal").textContent = Math.round(data.calories).toLocaleString("de-DE");
+    document.getElementById("postmStatKcalSub").textContent = `in ${(data.minutes / 60).toFixed(1).replace(".", ",")} Std Bewegung`;
+
+    document.getElementById("postmStatDays").textContent = String(data.activeDaysWorkout);
+    document.getElementById("postmStatDaysSub").textContent = `${data.restDaysCount} Ruhetage geloggt`;
+
+    const weightEl = document.getElementById("postmStatWeight");
+    const weightSubEl = document.getElementById("postmStatWeightSub");
+    if (weightStat) {
+      const dateLabel = formatShortDate(weightStat.lastDate);
+      if (weightStat.delta != null) {
+        const sign = weightStat.delta > 0 ? "+" : weightStat.delta < 0 ? "−" : "±";
+        weightEl.textContent = `${sign}${Math.abs(weightStat.delta).toFixed(1).replace(".", ",")} kg`;
+      } else {
+        weightEl.textContent = `${weightStat.lastKg.toFixed(1).replace(".", ",")} kg`;
+      }
+      weightSubEl.textContent = `${weightStat.lastKg.toFixed(1).replace(".", ",")} kg am ${dateLabel}`;
+    } else {
+      weightEl.textContent = "–";
+      weightSubEl.textContent = "Keine Einträge";
+    }
+
+    document.getElementById("postmActivitiesCard").innerHTML = buildPostmActivitiesHTML(data);
+
+    const bestdayCard = document.getElementById("postmBestdayCard");
+    if (data.bestDay) {
+      bestdayCard.style.display = "flex";
+      const bd = data.bestDay;
+      document.getElementById("postmBestdayMain").textContent = `${bd.date.getDate()}. ${MONTHS_LONG[bd.date.getMonth()]} · ${bd.steps.toLocaleString("de-DE")} Schritte`;
+      const iconType = bd.labels.length === 1
+        ? Object.keys(data.byType).find((k) => data.byType[k].label === bd.labels[0])
+        : null;
+      document.getElementById("postmBestdayIcon").innerHTML = getPostIcon(iconType);
+      const metaParts = [];
+      if (bd.labels.length) metaParts.push(bd.labels.length <= 2 ? bd.labels.join(" + ") : `${bd.labels.length} Aktivitäten`);
+      if (bd.totalMin > 0) metaParts.push(`${(bd.totalMin / 60).toFixed(1).replace(".", ",")} Std`);
+      if (bd.totalKcal > 0) metaParts.push(`${Math.round(bd.totalKcal).toLocaleString("de-DE")} kcal`);
+      document.getElementById("postmBestdayMeta").textContent = metaParts.length ? metaParts.join(" · ") : "Nur Schritte geloggt";
+    } else {
+      bestdayCard.style.display = "none";
+    }
+
+    const footerEl = document.getElementById("postmCFooterLine");
+    if (!postmFazitTouched) {
+      footerEl.innerHTML = `${data.activeDaysWorkout} aktive Tage <span class="postm-sep">·</span> ${Math.round(data.calories).toLocaleString("de-DE")}&nbsp;kcal verbrannt <span class="postm-sep">·</span> ${Math.round(data.steps).toLocaleString("de-DE")}&nbsp;Schritte`;
+    } else {
+      footerEl.textContent = document.getElementById("postmFazit").value;
+    }
+  }
+
+  async function setPostmBackgroundForMonth(year, month) {
+    let dataUrl = null;
+    try {
+      const monthStart = new Date(year, month, 1), monthEnd = new Date(year, month + 1, 0);
+      const startISO = toISO(monthStart), endISO = toISO(monthEnd);
+      const photos = await PhotoDB.all();
+      const match = photos.find((p) => p.date >= startISO && p.date <= endISO);
+      if (match && match.blob) dataUrl = await blobToDataURL(match.blob);
+    } catch (e) { /* Fotos nicht verfügbar – Standardhintergrund nutzen */ }
+    const img = document.getElementById("postmBgImg");
+    if (img) img.src = dataUrl || buildDefaultPostBg(1080, 1350);
+  }
+
+  async function syncPostmMonthFields(isFirstOpen) {
+    const daysInMonth = new Date(postmYear, postmMonth + 1, 0).getDate();
+    if (isFirstOpen) {
+      document.getElementById("postmEyebrow").value = "Monatsrückblick";
+    }
+    document.getElementById("postmTitle").value = `${MONTHS_LONG[postmMonth]} ${postmYear}`;
+    const data = computeMonthPostData(postmYear, postmMonth);
+    document.getElementById("postmRange").value = `${data.trackedDays} von ${daysInMonth} Tagen getrackt`;
+    postmFazitTouched = false;
+    document.getElementById("postmFazit").value = "";
+    document.getElementById("postmMonthLabel").textContent = `${MONTHS_LONG[postmMonth]} ${postmYear}`;
+    await setPostmBackgroundForMonth(postmYear, postmMonth);
+    renderPostmPreview();
+    fitPostmStage();
+  }
+
+  function fitPostmStage() {
+    const scaler = document.getElementById("postmStageScaler");
+    const outer = document.querySelector(".postm-stage-outer");
+    if (!scaler || !outer) return;
+    const available = Math.min(window.innerWidth, 520) - 32;
+    const scale = Math.min(1, available / 1080);
+    scaler.style.transform = `scale(${scale})`;
+    outer.style.minHeight = `${1350 * scale + 16}px`;
+  }
+
+  async function openMonthPostGenerator(year, month) {
+    postmYear = year;
+    postmMonth = month;
+    document.getElementById("postmOverlay").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    await syncPostmMonthFields(true);
+  }
+
+  function closeMonthPostGenerator() {
+    document.getElementById("postmOverlay").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  function downloadPostmPNG() {
+    const btn = document.getElementById("postmDownloadBtn");
+    if (typeof html2canvas === "undefined") {
+      alert("Die Export-Bibliothek konnte nicht geladen werden. Bitte prüfe deine Internetverbindung (wird einmalig von einem CDN geladen) und lade die Seite neu.");
+      return;
+    }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Wird erstellt …";
+
+    const capture = document.getElementById("postm-capture");
+    const scaler = document.getElementById("postmStageScaler");
+    scaler.style.transform = "none";
+
+    function restore() {
+      fitPostmStage();
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+
+    try {
+      html2canvas(capture, { width: 1080, height: 1350, scale: 2, backgroundColor: null, useCORS: true })
+        .then((canvas) => {
+          canvas.toBlob(async (blob) => {
+            if (!blob) { alert("Export fehlgeschlagen: Bild konnte nicht erzeugt werden."); restore(); return; }
+            const filename = `monatsrueckblick_${postmYear}-${String(postmMonth + 1).padStart(2, "0")}.png`;
+
+            const shared = await sharePostImage(blob, filename);
+            if (shared) { restore(); return; }
+
+            const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+            if (!isIOS) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.download = filename;
+              link.href = url;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 3000);
+              restore();
+              return;
+            }
+
+            showPostSaveFallback(blob);
+            restore();
+          }, "image/png");
+        })
+        .catch((err) => { alert("Export fehlgeschlagen: " + err); restore(); });
+    } catch (err) {
+      alert("Export fehlgeschlagen: " + err);
+      restore();
+    }
+  }
+
+  function initMonthPostGenerator() {
+    document.getElementById("postmCloseBtn").addEventListener("click", closeMonthPostGenerator);
+    document.getElementById("postmMonthPrev").addEventListener("click", () => {
+      const d = new Date(postmYear, postmMonth - 1, 1);
+      postmYear = d.getFullYear(); postmMonth = d.getMonth();
+      syncPostmMonthFields(false);
+    });
+    document.getElementById("postmMonthNext").addEventListener("click", () => {
+      const d = new Date(postmYear, postmMonth + 1, 1);
+      postmYear = d.getFullYear(); postmMonth = d.getMonth();
+      syncPostmMonthFields(false);
+    });
+    ["postmEyebrow", "postmTitle", "postmRange"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", renderPostmPreview);
+    });
+    document.getElementById("postmFazit").addEventListener("input", () => { postmFazitTouched = true; renderPostmPreview(); });
+    document.getElementById("postmFazitAutoBtn").addEventListener("click", () => {
+      postmFazitTouched = false;
+      document.getElementById("postmFazit").value = "";
+      renderPostmPreview();
+    });
+    document.getElementById("postmChangeBgBtn").addEventListener("click", () => document.getElementById("postmBgInput").click());
+    document.getElementById("postmBgInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => { document.getElementById("postmBgImg").src = ev.target.result; };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+    document.getElementById("postmResetBgBtn").addEventListener("click", () => {
+      setPostmBackgroundForMonth(postmYear, postmMonth);
+    });
+    document.getElementById("postmDownloadBtn").addEventListener("click", downloadPostmPNG);
+    window.addEventListener("resize", fitPostmStage);
   }
 
   /* ---------------------------------------------------------------- */
@@ -1395,10 +1698,17 @@
           <div class="progress-bar-lg"><div class="fill" style="width:${Math.round((challengeDone / challengeTotal) * 100)}%"></div></div>
         ` : `<div class="empty-hint">Keine Challenges in diesem Monat festgelegt.</div>`}
       </div>
+
+      <h2 class="section-title">Social-Media-Post</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Erstellt automatisch aus den Daten dieses Monats einen fertig gestalteten Monatsrückblick zum Teilen.</div>
+        <button class="btn btn-secondary btn-block" id="createMonthPostBtn">📸 Monats-Post erstellen</button>
+      </div>
     `;
 
     document.getElementById("monPrev").addEventListener("click", () => { monatAnchor = new Date(year, month - 1, 1); renderMonat(); });
     document.getElementById("monNext").addEventListener("click", () => { monatAnchor = new Date(year, month + 1, 1); renderMonat(); });
+    document.getElementById("createMonthPostBtn").addEventListener("click", () => openMonthPostGenerator(year, month));
   }
 
   /* ---------------------------------------------------------------- */
@@ -2197,6 +2507,7 @@
     initTopbar();
     initNav();
     initPostGenerator();
+    initMonthPostGenerator();
     renderHeute();
     initServiceWorker();
   });

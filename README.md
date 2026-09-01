@@ -291,6 +291,35 @@ großformatig angezeigt – dann einfach **antippen und halten** und „Zu
 Fotos hinzufügen" wählen. Auf dem Desktop/Android lädt der Button das
 Bild wie gewohnt direkt herunter.
 
+## 13. Social-Media-Post für den Monat
+
+Nach demselben Prinzip gibt es im Tab „Monat" die Karte
+„Social-Media-Post" mit dem Button **„📸 Monats-Post erstellen"**.
+Gleiches Design und Schema wie beim Wochen-Post (warmes Creme-/
+Braun-Design, automatisch aus echten Daten befüllt, Teilen-Funktion
+bzw. „antippen & halten"-Fallback auf iOS) – nur im klassischen
+Instagram-**Post**-Format 4:5 (1080×1350) statt im Story-Format.
+
+Automatisch befüllt werden für den gerade angezeigten Monat:
+
+- **Schritte** (Gesamt + Ø pro Tag mit Schritten)
+- **Kalorien** (Gesamt + Trainingsstunden)
+- **Aktive Tage** (echte Trainingstage) + Anzahl geloggter Ruhetage
+- **Gewicht** – Veränderung über den Monat (Differenz zum letzten
+  bekannten Wert davor bzw. zum ersten Eintrag des Monats) plus
+  aktuellem Wert und Datum; ohne Gewichtseinträge bleibt das Feld leer
+- **Top Aktivitäten** – deine häufigsten Sportarten des Monats mit
+  Gesamt-Kalorien und Anzahl, weitere Sportarten als kurze Aufzählung
+- **Bester Tag** – der Tag mit den meisten Schritten, inklusive der an
+  diesem Tag geloggten Aktivität(en); erscheint nur, wenn im Monat
+  überhaupt Schritte erfasst wurden
+- **Fazit** – automatisch generiert ("X aktive Tage · … kcal verbrannt
+  · … Schritte"), überschreibbar wie beim Wochen-Post
+
+Editierbar bleiben auch hier Eyebrow, Titel, Zeitraum, Fazit und
+Hintergrundbild (mit automatischem Progress-Foto des Monats, falls
+vorhanden). Mit den Pfeilen oben rechts wechselst du zwischen Monaten.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
