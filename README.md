@@ -382,13 +382,104 @@ siehst du auf einen Blick, was als Nächstes ansteht.
 ## 20. Körpermaße-Tracking
 
 Im Gewicht-Tab gibt es unterhalb des Gewichtsverlaufs jetzt eine
-eigene Sektion **„Körpermaße"**. Über ein Dropdown wählst du die
-Körperstelle (Taille, Hüfte, Brust, Oberschenkel, Bizeps), trägst
-Datum und Wert in cm ein und siehst – sobald mindestens 2 Einträge
-für diese Stelle vorhanden sind – einen eigenen Verlaufschart plus
-aktuellen Wert und Gesamtveränderung. Einträge lassen sich wie beim
-Gewicht bearbeiten und löschen (inkl. Rückgängig-Toast), jede
-Körperstelle führt ihren eigenen, unabhängigen Verlauf.
+eigene Sektion **„Körpermaße"**. Im Formular „Maß eintragen" wählst du
+zuerst explizit die Körperstelle (Taille, Hüfte, Brust, Oberschenkel,
+Bizeps), für die der Wert gilt, bevor du Datum und Wert in cm einträgst
+– so ist immer klar, wofür der gerade eingegebene Wert steht, statt
+sich auf eine weiter oben stehende Filterauswahl zu verlassen. Sobald
+mindestens 2 Einträge für eine Stelle vorhanden sind, siehst du einen
+eigenen Verlaufschart plus aktuellen Wert und Gesamtveränderung.
+Einträge lassen sich wie beim Gewicht bearbeiten und löschen (inkl.
+Rückgängig-Toast), jede Körperstelle führt ihren eigenen, unabhängigen
+Verlauf.
+
+## 21. Pace wird automatisch berechnet
+
+Bei Joggen und Inline-Skaten ist das Pace-Feld jetzt kein manuelles
+Eingabefeld mehr, sondern wird automatisch aus Distanz und Zeit
+berechnet und live aktualisiert, sobald du eines der beiden Felder
+änderst (z. B. 5,2 km in 32 Minuten → 6:09 min/km). Auch beim
+nachträglichen Bearbeiten einer Aktivität wird die Pace passend zu den
+gespeicherten Werten neu berechnet, damit Distanz, Zeit und Pace immer
+konsistent zueinander sind.
+
+## 22. Social-Media-Post für die Wochen-Challenge
+
+Im Challenge-Tab gibt es jetzt ebenfalls eine Karte „Social-Media-Post"
+mit dem Button **„🏆 Challenge-Post erstellen"** (erscheint aktiv,
+sobald für die aktuelle Woche eine Challenge eingetragen ist). Gleiches
+Design/Schema wie die anderen Posts, im Instagram-**Story**-Format
+(1080×1920): großer Titel, die Challenge selbst als Zitat-Karte, eine
+Tagesreihe Mo–So mit ✓/– je nachdem ob der Tag abgehakt wurde, die
+Anzahl geschaffter Tage („X/7") sowie ein „Perfekte Woche!"-Abzeichen
+bei 7/7. Eyebrow, Titel, Zeitraum, Challenge-Text, Fazit und
+Hintergrundbild (mit automatischem Progress-Foto der Woche, falls
+vorhanden) bleiben editierbar, Download läuft über dieselbe
+Teilen-/„antippen & halten"-Logik wie bei den anderen Posts.
+
+## 23. Instagram-Highlight-Cover
+
+Ebenfalls im Challenge-Tab: **„🏷️ Highlight-Cover erstellen"** erzeugt
+ein schlichtes quadratisches Titelbild (1080×1080) für deine
+Instagram-Story-Highlights – groß die Beschriftung (z. B. „Woche 3"),
+das App-Icon und der App-Name, sonst bewusst ohne weitere Daten, damit
+es auch als kleines rundes Highlight-Icon gut aussieht. Die
+Beschriftung ist frei editierbar; zwei ±-Buttons erhöhen bzw.
+verringern automatisch die Zahl am Ende (z. B. „Woche 3" → „Woche 4").
+Anders als die anderen Post-Generatoren ist dieser nicht an eine
+bestimmte Kalenderwoche gebunden. Der Hintergrund lässt sich per
+eigenem Foto ersetzen, Download läuft über dieselbe Logik wie überall.
+
+## 24. Trendgewicht statt Tagesgewicht
+
+Der Gewicht-Tab zeigt als Hauptwert jetzt nicht mehr den rohen
+Tageswert, sondern das **Trendgewicht** – einen gleitenden Durchschnitt
+über die letzten 14 Tage. Tageswerte schwanken 1–2 kg durch Wasser,
+Salz oder Zyklus, ohne dass sich am eigentlichen Fortschritt etwas
+ändert; der Trend zeigt die tatsächliche Entwicklung, ohne dass ein
+einzelner "schlechter" Tag frustriert. Der letzte Rohwert wird darunter
+weiterhin transparent angezeigt. Im Verlaufs-Chart ist die kräftige
+Linie der Trend, die blassen Punkte sind die einzelnen Messungen.
+
+## 25. Plateau-Erkennung
+
+Ist das Trendgewicht seit mindestens 14 Tagen nahezu unverändert
+(±0,3 kg), erscheint direkt im Gewicht-Tab ein einordnender Hinweis
+statt einfach nichts zu sagen: Plateaus gehören zum Abnehmen dazu (z. B.
+durch Wassereinlagerungen, Muskelaufbau oder eine natürliche
+Verlangsamung) und bedeuten nicht, dass nichts passiert.
+
+## 26. Streak-Freeze fürs Wochenziel
+
+Die Wochenziel-Serie (im Trends-Tab als Badge „Zielstrebig" sichtbar)
+verzeiht jetzt einmal pro Kalendermonat automatisch eine verpasste
+Woche, ohne die Serie auf 0 zurückzusetzen – nach dem Vorbild von
+Duolingos „Streak Freeze". Das greift automatisch bei der Berechnung,
+ganz ohne manuellen Klick.
+
+## 27. Ziel-Datum-Prognose
+
+Ist ein Zielgewicht hinterlegt, rechnet die App im Gewicht-Tab aus dem
+aktuellen Trendtempo hoch, wann du dein Ziel bei gleichbleibendem Tempo
+ungefähr erreichst ("Ziel erreicht am ca. …"). Bewegt sich der Trend
+gerade nicht in Richtung Ziel oder ist er zu flach für eine seriöse
+Schätzung, bleibt die Prognose bewusst weg, statt eine irreführende
+Zahl zu zeigen.
+
+## 28. Neue Tagesziele: Liegestütze, Plank, Stretching
+
+Im Heute-Tab (und im Kalender-Editor) gibt es drei neue Tagesziele,
+analog zu Schritten und Wasser:
+
+- **💪 Liegestütze am Stück** – wie viele du geschafft hast, mit
+  konfigurierbarem Tagesziel (Standard: 20).
+- **🧍 Plank** – Sekundenzahl, mit konfigurierbarem Tagesziel (Standard:
+  60 Sekunden).
+- **🧘 5 Min Stretching** – einfacher Haken, ob du heute gedehnt hast.
+
+Die Ziele für Liegestütze und Plank lassen sich unter Einstellungen →
+Tagesziele anpassen. Alle drei Werte werden auch im CSV-Export
+mitgeliefert.
 
 ## Mögliche nächste Schritte
 
@@ -407,7 +498,10 @@ Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
   Einzelansicht
 - **Erweiterte CSV-Auswertung** – ein "Alle Daten (gesamter Verlauf)"-Export
   zusätzlich zu Woche/Monat/Jahr
-- **Wochenrückblick-Erinnerungstext** – am Sonntagabend automatisch einen
-  kurzen Rückblick als Vorschlag für den Social-Media-Post vorbereiten
+- **Nicht-Skalen-Erfolge (Non-Scale Victories)** – ein Log für Fortschritte
+  ohne Waagenbezug (Hose sitzt lockerer, mehr Energie, Sport-PR)
+- **Recomposition-Hinweis** – automatisch erkennen, wenn Gewicht stabil,
+  aber ein Körpermaß (z. B. Taille) rückläufig ist
+- **Vorher/Nachher-Foto-Vergleich mit Schieberegler**
 - Cloud-Sync, falls du die App später doch auf mehreren Geräten nutzen
   möchtest

@@ -39,6 +39,9 @@
   const DEFAULT_APP_NAME = "lenegoeslean";
   const DEFAULT_WEEKLY_GOAL_SESSIONS = 4;
   const DEFAULT_WEEKLY_GOAL_MINUTES = 150;
+  const DEFAULT_PUSHUPS_GOAL = 20;
+  const DEFAULT_PLANK_GOAL_SECONDS = 60;
+  const STREAK_FREEZE_PER_MONTH = 1;
 
   const MEASUREMENT_TYPES = {
     taille:       { label: "Taille",       icon: "📏" },
@@ -233,7 +236,7 @@
     },
     getEntry(dateISO) {
       const data = this.load();
-      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false, water: 0 };
+      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false, water: 0, pushups: null, plankSeconds: null, stretchingDone: false };
     },
     setEntry(dateISO, entry) {
       const data = this.load();
@@ -321,7 +324,7 @@
       return Object.assign({
         theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
         weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
-        targetWeightKg: null
+        targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS
       }, data.settings);
     },
     saveSettings(patch) {
@@ -543,6 +546,11 @@
     const water = entry.water || 0;
     const waterPct = Math.min(100, Math.round((water / goals.waterGoalMl) * 100));
 
+    const pushupsVal = entry.pushups || 0;
+    const pushupsPct = Math.min(100, Math.round((pushupsVal / goals.pushupsGoal) * 100));
+    const plankVal = entry.plankSeconds || 0;
+    const plankPct = Math.min(100, Math.round((plankVal / goals.plankGoalSeconds) * 100));
+
     return `
       <div class="card">
         <label class="field-label">Schritte</label>
@@ -569,6 +577,27 @@
       </div>
 
       <div class="card">
+        <label class="field-label">💪 Liegestütze am Stück</label>
+        <input type="number" min="0" step="1" class="pushups-input" placeholder="z. B. 15" value="${entry.pushups ?? ""}">
+        <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${pushupsPct}%"></div></div>
+        <div class="goal-caption">${pushupsVal >= goals.pushupsGoal ? `🎯 Tagesziel erreicht (${goals.pushupsGoal})!` : `${pushupsVal} / ${goals.pushupsGoal}`}</div>
+      </div>
+
+      <div class="card">
+        <label class="field-label">🧍 Plank (Sekunden)</label>
+        <input type="number" min="0" step="5" class="plank-input" placeholder="z. B. 45" value="${entry.plankSeconds ?? ""}">
+        <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${plankPct}%"></div></div>
+        <div class="goal-caption">${plankVal >= goals.plankGoalSeconds ? `🎯 Tagesziel erreicht (${goals.plankGoalSeconds}s)!` : `${plankVal} / ${goals.plankGoalSeconds} s`}</div>
+      </div>
+
+      <div class="card">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;">
+          <span class="field-label" style="margin-bottom:0;">🧘 5 Min Stretching</span>
+          <input type="checkbox" class="stretch-check" ${entry.stretchingDone ? "checked" : ""} style="width:20px;height:20px;">
+        </label>
+      </div>
+
+      <div class="card">
         ${challengeBlock}
       </div>
 
@@ -589,12 +618,33 @@
     `;
   }
 
+  /* Pace (min/km) wird bei Sportarten mit Distanz + Zeit automatisch
+     berechnet, statt manuell eingetippt zu werden. */
+  function computePaceString(distanzKm, zeitMin) {
+    const d = parseFloat(distanzKm);
+    const t = parseFloat(zeitMin);
+    if (!d || d <= 0 || !t || t <= 0) return "";
+    const totalSeconds = Math.round((t / d) * 60);
+    const min = Math.floor(totalSeconds / 60);
+    const sec = totalSeconds % 60;
+    return `${min}:${String(sec).padStart(2, "0")}`;
+  }
+
+  function updateAutoPace(container) {
+    const paceInput = container.querySelector('[data-auto-pace="1"]');
+    if (!paceInput) return;
+    const distInput = container.querySelector('[data-field="distanz"]');
+    const zeitInput = container.querySelector('[data-field="zeit"]');
+    paceInput.value = computePaceString(distInput ? distInput.value : "", zeitInput ? zeitInput.value : "");
+  }
+
   function renderDynamicFields(container, sportKey) {
     const sport = SPORTS[sportKey] || SPORTS.restday;
     if (sportKey === "restday") {
       container.innerHTML = `<div class="small muted" style="grid-column:1/-1;padding:4px 0 2px;">Rest-Day – keine weiteren Angaben nötig. Gönn dir die Pause! 🐼</div>`;
       return;
     }
+    const autoPace = sport.fields.includes("pace") && sport.fields.includes("distanz") && sport.fields.includes("zeit");
     let html = "";
     if (sport.custom) {
       html += `<div class="field" style="grid-column:1/-1;">
@@ -604,12 +654,25 @@
     }
     html += sport.fields.map((f) => {
       const meta = FIELD_META[f];
+      if (f === "pace" && autoPace) {
+        return `<div class="field">
+          <label class="field-label">${meta.label} (${meta.unit}) <span class="small muted">· automatisch</span></label>
+          <input type="text" readonly placeholder="–" data-field="pace" data-auto-pace="1" style="background:var(--accent-soft-2); color:var(--text-muted);">
+        </div>`;
+      }
       return `<div class="field">
         <label class="field-label">${meta.label} (${meta.unit})</label>
         <input type="${meta.type}" ${meta.step ? `step="${meta.step}"` : ""} placeholder="${meta.placeholder}" data-field="${f}">
       </div>`;
     }).join("");
     container.innerHTML = html;
+    if (autoPace) {
+      const distInput = container.querySelector('[data-field="distanz"]');
+      const zeitInput = container.querySelector('[data-field="zeit"]');
+      const recalc = () => updateAutoPace(container);
+      if (distInput) distInput.addEventListener("input", recalc);
+      if (zeitInput) zeitInput.addEventListener("input", recalc);
+    }
   }
 
   function bindEntryEditor(container, dateISO, onChange) {
@@ -621,6 +684,32 @@
       showToast(v >= goals.stepsGoal ? "🎯 Tagesziel erreicht!" : "Schritte gespeichert");
       onChange();
     });
+
+    const pushupsInput = container.querySelector(".pushups-input");
+    if (pushupsInput) {
+      pushupsInput.addEventListener("change", () => {
+        const v = pushupsInput.value === "" ? null : Math.max(0, parseInt(pushupsInput.value, 10) || 0);
+        Storage.updateEntry(dateISO, (e) => { e.pushups = v; });
+        if (v != null && v >= goals.pushupsGoal) showToast("🎯 Liegestütze-Ziel erreicht!");
+        onChange();
+      });
+    }
+    const plankInput = container.querySelector(".plank-input");
+    if (plankInput) {
+      plankInput.addEventListener("change", () => {
+        const v = plankInput.value === "" ? null : Math.max(0, parseInt(plankInput.value, 10) || 0);
+        Storage.updateEntry(dateISO, (e) => { e.plankSeconds = v; });
+        if (v != null && v >= goals.plankGoalSeconds) showToast("🎯 Plank-Ziel erreicht!");
+        onChange();
+      });
+    }
+    const stretchCheck = container.querySelector(".stretch-check");
+    if (stretchCheck) {
+      stretchCheck.addEventListener("change", () => {
+        Storage.updateEntry(dateISO, (e) => { e.stretchingDone = stretchCheck.checked; });
+        onChange();
+      });
+    }
 
     const waterCheck = container.querySelector(".water-check");
     if (waterCheck) {
@@ -713,6 +802,7 @@
           const input = dynamicFields.querySelector(`[data-field="${f}"]`);
           if (input) input.value = activity[f] ?? "";
         });
+        updateAutoPace(dynamicFields);
 
         submitBtn.textContent = "Änderungen speichern";
         cancelEditBtn.style.display = "block";
@@ -916,18 +1006,19 @@
   }
 
   function buildTrackingCSV(dates) {
-    const rows = [["Datum", "Wochentag", "Schritte", "Aktivität", "Pace", "Distanz (km)", "Zeit (min)", "Kalorien", "Challenge erledigt"]];
+    const rows = [["Datum", "Wochentag", "Schritte", "Aktivität", "Pace", "Distanz (km)", "Zeit (min)", "Kalorien", "Challenge erledigt", "Liegestütze", "Plank (Sek.)", "Stretching"]];
     dates.forEach((d) => {
       const iso = toISO(d);
       const entry = Storage.getEntry(iso);
       const wd = WEEKDAYS_LONG[d.getDay()];
+      const extra = [entry.pushups ?? "", entry.plankSeconds ?? "", entry.stretchingDone ? "Ja" : "Nein"];
       if (!entry.activities.length) {
-        rows.push([iso, wd, entry.steps ?? "", "", "", "", "", "", entry.challengeChecked ? "Ja" : "Nein"]);
+        rows.push([iso, wd, entry.steps ?? "", "", "", "", "", "", entry.challengeChecked ? "Ja" : "Nein", ...extra]);
       } else {
         entry.activities.forEach((a) => {
           const sport = SPORTS[a.type] || SPORTS.custom;
           const label = sport.custom && a.customName ? a.customName : sport.label;
-          rows.push([iso, wd, entry.steps ?? "", label, a.pace ?? "", a.distanz ?? "", a.zeit ?? "", a.kalorien ?? "", entry.challengeChecked ? "Ja" : "Nein"]);
+          rows.push([iso, wd, entry.steps ?? "", label, a.pace ?? "", a.distanz ?? "", a.zeit ?? "", a.kalorien ?? "", entry.challengeChecked ? "Ja" : "Nein", ...extra]);
         });
       }
     });
@@ -1638,6 +1729,331 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Post-Generator (Challenge der Woche)                                */
+  /* Story-Format 1080×1920, gleiches Design/Schema wie die anderen     */
+  /* Post-Generatoren – zeigt die Wochenchallenge + Tagesfortschritt.    */
+  /* ---------------------------------------------------------------- */
+
+  let postcWeekStart = null;
+  let postcFazitTouched = false;
+
+  function computePostcWeekData(weekStart) {
+    const wKey = weekKey(weekStart);
+    const challenge = Storage.getChallenge(wKey);
+    const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const dayData = days.map((d, idx) => ({
+      dow: WEEKDAYS_SHORT[idx].toUpperCase(),
+      done: !!Storage.getEntry(toISO(d)).challengeChecked
+    }));
+    const doneCount = dayData.filter((d) => d.done).length;
+    return { text: (challenge && challenge.text) || "", dayData, doneCount };
+  }
+
+  function renderPostcPreview() {
+    if (!postcWeekStart) return;
+    const data = computePostcWeekData(postcWeekStart);
+
+    document.getElementById("postcCEyebrow").textContent = document.getElementById("postcEyebrow").value;
+    document.getElementById("postcCTitle").textContent = document.getElementById("postcTitle").value;
+    document.getElementById("postcCRange").textContent = document.getElementById("postcRange").value;
+    document.getElementById("postcChallengeText").textContent = document.getElementById("postcChallengeTextInput").value || "Noch keine Challenge für diese Woche festgelegt";
+
+    document.getElementById("postcDots").innerHTML = data.dayData.map((d) => `
+      <div class="postc-day-chip ${d.done ? "on" : "off"}">
+        <div class="postc-day-dow">${d.dow}</div>
+        <div class="postc-day-mark">${d.done ? "✓" : "–"}</div>
+      </div>
+    `).join("");
+
+    document.getElementById("postcStatDays").textContent = `${data.doneCount}/7`;
+    const perfect = data.doneCount === 7;
+    document.getElementById("postcPerfectBadge").style.display = perfect ? "inline-flex" : "none";
+
+    const footerEl = document.getElementById("postcCFooterLine");
+    if (!postcFazitTouched) {
+      footerEl.textContent = perfect ? "Perfekte Woche – 7 von 7 Tagen geschafft! 🏆" : `${data.doneCount} von 7 Tagen geschafft`;
+    } else {
+      footerEl.textContent = document.getElementById("postcFazit").value;
+    }
+  }
+
+  async function setPostcBackgroundForWeek(weekStart, weekEnd) {
+    let dataUrl = null;
+    try {
+      const photos = await PhotoDB.all();
+      const startISO = toISO(weekStart), endISO = toISO(weekEnd);
+      const match = photos.find((p) => p.date >= startISO && p.date <= endISO);
+      if (match && match.blob) dataUrl = await blobToDataURL(match.blob);
+    } catch (e) { /* Fotos nicht verfügbar – Standardhintergrund nutzen */ }
+    const img = document.getElementById("postcBgImg");
+    if (img) img.src = dataUrl || buildDefaultPostBg(1080, 1920);
+  }
+
+  async function syncPostcWeekFields(isFirstOpen) {
+    const weekEnd = addDays(postcWeekStart, 6);
+    const wKey = weekKey(postcWeekStart);
+    if (isFirstOpen) {
+      document.getElementById("postcEyebrow").value = "Challenge der Woche";
+      document.getElementById("postcTitle").value = "Diese Woche geschafft";
+    }
+    document.getElementById("postcRange").value = formatWeekRangeDE(postcWeekStart, weekEnd);
+    const challenge = Storage.getChallenge(wKey);
+    document.getElementById("postcChallengeTextInput").value = (challenge && challenge.text) || "";
+    postcFazitTouched = false;
+    document.getElementById("postcFazit").value = "";
+    document.getElementById("postcWeekLabel").textContent =
+      `KW ${wKey.split("-W")[1]} · ${formatShortDate(postcWeekStart)}–${formatShortDate(weekEnd)}`;
+    await setPostcBackgroundForWeek(postcWeekStart, weekEnd);
+    renderPostcPreview();
+    fitPostcStage();
+  }
+
+  function fitPostcStage() {
+    const scaler = document.getElementById("postcStageScaler");
+    const outer = document.querySelector(".postc-stage-outer");
+    if (!scaler || !outer) return;
+    const available = Math.min(window.innerWidth, 520) - 32;
+    const scale = Math.min(1, available / 1080);
+    scaler.style.transform = `scale(${scale})`;
+    outer.style.minHeight = `${1920 * scale + 16}px`;
+  }
+
+  async function openChallengePostGenerator(weekStart) {
+    postcWeekStart = weekStart;
+    document.getElementById("postcOverlay").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    await syncPostcWeekFields(true);
+  }
+
+  function closeChallengePostGenerator() {
+    document.getElementById("postcOverlay").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  function downloadPostcPNG() {
+    const btn = document.getElementById("postcDownloadBtn");
+    if (typeof html2canvas === "undefined") {
+      alert("Die Export-Bibliothek konnte nicht geladen werden. Bitte prüfe deine Internetverbindung (wird einmalig von einem CDN geladen) und lade die Seite neu.");
+      return;
+    }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Wird erstellt …";
+
+    const capture = document.getElementById("postc-capture");
+    const scaler = document.getElementById("postcStageScaler");
+    scaler.style.transform = "none";
+
+    function restore() {
+      fitPostcStage();
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+
+    try {
+      html2canvas(capture, { width: 1080, height: 1920, scale: 2, backgroundColor: null, useCORS: true })
+        .then((canvas) => {
+          canvas.toBlob(async (blob) => {
+            if (!blob) { alert("Export fehlgeschlagen: Bild konnte nicht erzeugt werden."); restore(); return; }
+            const filename = `challenge_${weekKey(postcWeekStart)}.png`;
+
+            const shared = await sharePostImage(blob, filename);
+            if (shared) { restore(); return; }
+
+            const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+            if (!isIOS) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.download = filename;
+              link.href = url;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 3000);
+              restore();
+              return;
+            }
+
+            showPostSaveFallback(blob);
+            restore();
+          }, "image/png");
+        })
+        .catch((err) => { alert("Export fehlgeschlagen: " + err); restore(); });
+    } catch (err) {
+      alert("Export fehlgeschlagen: " + err);
+      restore();
+    }
+  }
+
+  function initChallengePostGenerator() {
+    document.getElementById("postcCloseBtn").addEventListener("click", closeChallengePostGenerator);
+    document.getElementById("postcWeekPrev").addEventListener("click", () => {
+      postcWeekStart = addDays(postcWeekStart, -7);
+      syncPostcWeekFields(false);
+    });
+    document.getElementById("postcWeekNext").addEventListener("click", () => {
+      postcWeekStart = addDays(postcWeekStart, 7);
+      syncPostcWeekFields(false);
+    });
+    ["postcEyebrow", "postcTitle", "postcRange", "postcChallengeTextInput"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", renderPostcPreview);
+    });
+    document.getElementById("postcFazit").addEventListener("input", () => { postcFazitTouched = true; renderPostcPreview(); });
+    document.getElementById("postcFazitAutoBtn").addEventListener("click", () => {
+      postcFazitTouched = false;
+      document.getElementById("postcFazit").value = "";
+      renderPostcPreview();
+    });
+    document.getElementById("postcChangeBgBtn").addEventListener("click", () => document.getElementById("postcBgInput").click());
+    document.getElementById("postcBgInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => { document.getElementById("postcBgImg").src = ev.target.result; };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+    document.getElementById("postcResetBgBtn").addEventListener("click", () => {
+      setPostcBackgroundForWeek(postcWeekStart, addDays(postcWeekStart, 6));
+    });
+    document.getElementById("postcDownloadBtn").addEventListener("click", downloadPostcPNG);
+    window.addEventListener("resize", fitPostcStage);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Instagram-Highlight-Cover                                          */
+  /* Minimalistisches quadratisches Bild (1080×1080) mit editierbarem   */
+  /* "Woche X"-Label – zum Verwenden als Highlight-Titelbild.            */
+  /* ---------------------------------------------------------------- */
+
+  let postwBgCustomized = false;
+
+  function renderPostwPreview() {
+    const label = document.getElementById("postwLabelInput").value || "Woche 1";
+    document.getElementById("postwLabelDisplay").textContent = label;
+  }
+
+  function stepPostwLabel(delta) {
+    const input = document.getElementById("postwLabelInput");
+    const m = input.value.match(/^(.*?)(\d+)(\s*)$/);
+    if (m) {
+      const num = Math.max(1, parseInt(m[2], 10) + delta);
+      input.value = `${m[1]}${num}${m[3]}`;
+    } else if (delta > 0) {
+      input.value = input.value.trim() ? `${input.value.trim()} 1` : "Woche 1";
+    }
+    renderPostwPreview();
+  }
+
+  function fitPostwStage() {
+    const scaler = document.getElementById("postwStageScaler");
+    const outer = document.querySelector(".postw-stage-outer");
+    if (!scaler || !outer) return;
+    const available = Math.min(window.innerWidth, 520) - 32;
+    const scale = Math.min(1, available / 1080);
+    scaler.style.transform = `scale(${scale})`;
+    outer.style.minHeight = `${1080 * scale + 16}px`;
+  }
+
+  function openHighlightGenerator() {
+    document.getElementById("postwOverlay").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    document.getElementById("postwAppName").textContent = Storage.getSettings().appName || DEFAULT_APP_NAME;
+    if (!postwBgCustomized) {
+      document.getElementById("postwBgImg").src = buildDefaultPostBg(1080, 1080);
+    }
+    renderPostwPreview();
+    fitPostwStage();
+  }
+
+  function closeHighlightGenerator() {
+    document.getElementById("postwOverlay").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+
+  function downloadPostwPNG() {
+    const btn = document.getElementById("postwDownloadBtn");
+    if (typeof html2canvas === "undefined") {
+      alert("Die Export-Bibliothek konnte nicht geladen werden. Bitte prüfe deine Internetverbindung (wird einmalig von einem CDN geladen) und lade die Seite neu.");
+      return;
+    }
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Wird erstellt …";
+
+    const capture = document.getElementById("postw-capture");
+    const scaler = document.getElementById("postwStageScaler");
+    scaler.style.transform = "none";
+
+    function restore() {
+      fitPostwStage();
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+
+    try {
+      html2canvas(capture, { width: 1080, height: 1080, scale: 2, backgroundColor: null, useCORS: true })
+        .then((canvas) => {
+          canvas.toBlob(async (blob) => {
+            if (!blob) { alert("Export fehlgeschlagen: Bild konnte nicht erzeugt werden."); restore(); return; }
+            const labelSlug = (document.getElementById("postwLabelInput").value || "highlight")
+              .toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "highlight";
+            const filename = `highlight_${labelSlug}.png`;
+
+            const shared = await sharePostImage(blob, filename);
+            if (shared) { restore(); return; }
+
+            const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+            if (!isIOS) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.download = filename;
+              link.href = url;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 3000);
+              restore();
+              return;
+            }
+
+            showPostSaveFallback(blob);
+            restore();
+          }, "image/png");
+        })
+        .catch((err) => { alert("Export fehlgeschlagen: " + err); restore(); });
+    } catch (err) {
+      alert("Export fehlgeschlagen: " + err);
+      restore();
+    }
+  }
+
+  function initHighlightGenerator() {
+    document.getElementById("postwCloseBtn").addEventListener("click", closeHighlightGenerator);
+    document.getElementById("postwLabelInput").addEventListener("input", renderPostwPreview);
+    document.getElementById("postwLabelMinusBtn").addEventListener("click", () => stepPostwLabel(-1));
+    document.getElementById("postwLabelPlusBtn").addEventListener("click", () => stepPostwLabel(1));
+    document.getElementById("postwChangeBgBtn").addEventListener("click", () => document.getElementById("postwBgInput").click());
+    document.getElementById("postwBgInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById("postwBgImg").src = ev.target.result;
+        postwBgCustomized = true;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+    document.getElementById("postwResetBgBtn").addEventListener("click", () => {
+      postwBgCustomized = false;
+      document.getElementById("postwBgImg").src = buildDefaultPostBg(1080, 1080);
+    });
+    document.getElementById("postwDownloadBtn").addEventListener("click", downloadPostwPNG);
+    window.addEventListener("resize", fitPostwStage);
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Tab: Kalender                                                      */
   /* ---------------------------------------------------------------- */
 
@@ -2034,6 +2450,19 @@
 
       <h2 class="section-title">Frühere Challenges</h2>
       <div class="card">${historyRows}</div>
+
+      <h2 class="section-title">Social-Media-Post</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Erstellt automatisch aus der Challenge dieser Woche einen fertig gestalteten Story-Post zum Teilen.</div>
+        <button class="btn btn-secondary btn-block" id="createChallengePostBtn"${challenge && challenge.text ? "" : " disabled"}>🏆 Challenge-Post erstellen</button>
+        ${challenge && challenge.text ? "" : `<div class="small muted" style="margin-top:8px;">Trag oben zuerst eine Challenge für diese Woche ein.</div>`}
+      </div>
+
+      <h2 class="section-title">Instagram-Highlight</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Ein schlichtes quadratisches Titelbild für deine Instagram-Story-Highlights (z. B. „Woche 3"), unabhängig von einer bestimmten Woche.</div>
+        <button class="btn btn-secondary btn-block" id="createHighlightBtn">🏷️ Highlight-Cover erstellen</button>
+      </div>
     `;
 
     document.getElementById("chPrev").addEventListener("click", () => { challengeAnchor = addDays(weekStart, -7); renderChallenge(); });
@@ -2051,6 +2480,11 @@
         renderChallenge();
       });
     });
+    const createChallengePostBtn = document.getElementById("createChallengePostBtn");
+    if (createChallengePostBtn && !createChallengePostBtn.disabled) {
+      createChallengePostBtn.addEventListener("click", () => openChallengePostGenerator(weekStart));
+    }
+    document.getElementById("createHighlightBtn").addEventListener("click", () => openHighlightGenerator());
   }
 
   /* ---------------------------------------------------------------- */
@@ -2083,20 +2517,40 @@
     return { current, longest, totalActiveDays: activeDates.length };
   }
 
+  /* Streak-Freeze (nach Duolingo-Vorbild): pro Kalendermonat darf eine
+     verpasste Wochenziel-Woche die Serie retten, statt sie sofort auf 0
+     zu setzen. Verlustaversion ist gut belegt – ein gerissener Streak
+     demotiviert stärker, als ein einzelner Streak-Tag motiviert. Die
+     Berechnung ist rein aus der Historie abgeleitet (kein manueller
+     "Joker einlösen"-Klick nötig) und greift automatisch. */
   function computeWeeklyGoalStreak() {
     const goals = Storage.getSettings();
-    if (goals.weeklyGoalMode !== "sessions" && goals.weeklyGoalMode !== "minutes") return 0;
+    if (goals.weeklyGoalMode !== "sessions" && goals.weeklyGoalMode !== "minutes") return { streak: 0, freezeUsed: false };
     const isSessions = goals.weeklyGoalMode === "sessions";
     const target = isSessions ? (goals.weeklyGoalSessions || DEFAULT_WEEKLY_GOAL_SESSIONS) : (goals.weeklyGoalMinutes || DEFAULT_WEEKLY_GOAL_MINUTES);
     let streak = 0;
+    let freezeUsed = false;
+    const freezesUsedByMonth = {};
     let cursor = addDays(startOfWeek(new Date()), -7); // letzte vollständig abgeschlossene Woche
     for (let i = 0; i < 104; i++) {
       const agg = weekAggregate(cursor);
       const val = isSessions ? agg.sessionsCount : agg.minutes;
-      if (val > 0 && val >= target) { streak++; cursor = addDays(cursor, -7); }
-      else break;
+      if (val > 0 && val >= target) {
+        streak++;
+        cursor = addDays(cursor, -7);
+        continue;
+      }
+      const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+      const used = freezesUsedByMonth[monthKey] || 0;
+      if (used < STREAK_FREEZE_PER_MONTH) {
+        freezesUsedByMonth[monthKey] = used + 1;
+        freezeUsed = true;
+        cursor = addDays(cursor, -7);
+        continue;
+      }
+      break;
     }
-    return streak;
+    return { streak, freezeUsed };
   }
 
   function computeBadges() {
@@ -2107,7 +2561,7 @@
     return [
       { icon: "🔥", label: "7-Tage-Serie", sub: "7 Tage in Folge aktiv", earned: streaks.longest >= 7 },
       { icon: "🔥", label: "30-Tage-Serie", sub: "30 Tage in Folge aktiv", earned: streaks.longest >= 30 },
-      { icon: "🎯", label: "Zielstrebig", sub: "4 Wochen Wochenziel in Folge", earned: weeklyStreak >= 4 },
+      { icon: "🎯", label: "Zielstrebig", sub: weeklyStreak.freezeUsed ? "4 Wochen Wochenziel in Folge · 🧊 Streak-Freeze aktiv" : "4 Wochen Wochenziel in Folge", earned: weeklyStreak.streak >= 4 },
       { icon: "🏆", label: "Perfekte Woche", sub: "Challenge 7/7 Tage geschafft", earned: chAll.perfectWeeks >= 1 },
       { icon: "💪", label: "100 Einheiten", sub: "100 Trainingseinheiten geloggt", earned: totalWorkouts >= 100 },
       { icon: "📆", label: "50 aktive Tage", sub: "50 Tage insgesamt aktiv", earned: streaks.totalActiveDays >= 50 }
@@ -2280,7 +2734,10 @@
       <div class="card">${bestRows}</div>
 
       <h2 class="section-title">Erfolge</h2>
-      <div class="card">${buildBadgesHTML(computeBadges())}</div>
+      <div class="card">
+        ${buildBadgesHTML(computeBadges())}
+        <div class="small muted" style="margin-top:14px;">🧊 Streak-Freeze: 1× pro Monat rettet deine Wochenziel-Serie automatisch, falls du eine Woche mal nicht schaffst.</div>
+      </div>
 
       <h2 class="section-title">Beliebteste Sportarten</h2>
       <div class="card">${topSportsHTML}</div>
@@ -2379,6 +2836,75 @@
     </svg>`;
   }
 
+  /* Trendgewicht: gleitender Durchschnitt über die letzten 14 Tage statt
+     des rohen Tageswerts. Tageswerte schwanken 1-2 kg durch Wasser, Salz,
+     Zyklus etc. – der Trend zeigt die eigentliche Entwicklung, ohne dass
+     ein einzelner "schlechter" Tag frustriert. */
+  function computeWeightTrend(weights, windowDays) {
+    const win = windowDays || 14;
+    return weights.map((w) => {
+      const windowStartISO = toISO(addDays(fromISO(w.date), -(win - 1)));
+      const inWindow = weights.filter((x) => x.date >= windowStartISO && x.date <= w.date);
+      const avg = inWindow.reduce((s, x) => s + x.kg, 0) / inWindow.length;
+      return { id: w.id, date: w.date, value: avg };
+    });
+  }
+
+  function buildWeightTrendChartSVG(rawPoints, trendPoints, unit) {
+    if (rawPoints.length < 2) return null;
+    const w = 300, h = 140, padX = 10, padY = 16;
+    const allValues = rawPoints.map((p) => p.kg).concat(trendPoints.map((p) => p.value));
+    const min = Math.min(...allValues), max = Math.max(...allValues);
+    const range = (max - min) || 1;
+    const stepX = (w - padX * 2) / (rawPoints.length - 1);
+    const mapY = (v) => padY + (h - padY * 2) * (1 - (v - min) / range);
+    const rawDots = rawPoints.map((p, i) =>
+      `<circle cx="${(padX + i * stepX).toFixed(1)}" cy="${mapY(p.kg).toFixed(1)}" r="2.6" fill="#FF4D8D" opacity="0.28"/>`
+    ).join("");
+    const trendPts = trendPoints.map((p, i) => ({ x: padX + i * stepX, y: mapY(p.value) }));
+    const pathD = trendPts.map((p, i) => (i === 0 ? "M" : "L") + p.x.toFixed(1) + "," + p.y.toFixed(1)).join(" ");
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <text x="${padX}" y="12" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${max.toFixed(1)}${unit}</text>
+      <text x="${padX}" y="${h - 4}" font-size="10" fill="#948A93" font-family="Inter, sans-serif">${min.toFixed(1)}${unit}</text>
+      ${rawDots}
+      <path d="${pathD}" fill="none" stroke="#FF4D8D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  /* Plateau-Erkennung: Wenn sich das Trendgewicht seit ~14+ Tagen kaum
+     bewegt hat, aktiv einordnen statt einfach nichts zu sagen. */
+  function detectWeightPlateau(trendPoints) {
+    if (trendPoints.length < 2) return null;
+    const latest = trendPoints[trendPoints.length - 1];
+    const cutoffISO = toISO(addDays(fromISO(latest.date), -14));
+    const refCandidates = trendPoints.filter((p) => p.date <= cutoffISO);
+    if (!refCandidates.length) return null;
+    const ref = refCandidates[refCandidates.length - 1];
+    const days = Math.round((fromISO(latest.date) - fromISO(ref.date)) / 86400000);
+    if (days < 14) return null;
+    const diff = Math.abs(latest.value - ref.value);
+    if (diff <= 0.3) return { days };
+    return null;
+  }
+
+  /* Ziel-Datum-Prognose: lineare Hochrechnung aus dem jüngsten Trendtempo. */
+  function computeGoalDateProjection(trendPoints, targetKg) {
+    if (targetKg == null || trendPoints.length < 2) return null;
+    const recent = trendPoints.slice(-8);
+    const first = recent[0], last = recent[recent.length - 1];
+    const days = (fromISO(last.date) - fromISO(first.date)) / 86400000;
+    if (days < 5) return { status: "insufficient" };
+    const ratePerDay = (last.value - first.value) / days;
+    const remaining = targetKg - last.value;
+    if (Math.abs(remaining) < 0.05) return { status: "reached" };
+    if (Math.abs(ratePerDay) < 0.004) return { status: "stalled" };
+    const movingTowardTarget = (remaining < 0 && ratePerDay < 0) || (remaining > 0 && ratePerDay > 0);
+    if (!movingTowardTarget) return { status: "wrong-direction" };
+    const daysNeeded = Math.round(remaining / ratePerDay);
+    const projectedDate = addDays(fromISO(last.date), daysNeeded);
+    return { status: "ok", date: projectedDate, ratePerWeek: ratePerDay * 7 };
+  }
+
   function findNearestWeightBefore(weights, isoDate) {
     let best = null;
     weights.forEach((w) => {
@@ -2387,14 +2913,12 @@
     return best;
   }
 
-  function computeWeightGoalProgress(weights, targetKg) {
-    if (!weights.length || targetKg == null) return null;
-    const start = weights[0].kg;
-    const current = weights[weights.length - 1].kg;
-    if (start === targetKg) return null;
-    const reached = (start > targetKg && current <= targetKg) || (start < targetKg && current >= targetKg);
-    const pct = reached ? 100 : Math.max(0, Math.min(100, Math.round(((start - current) / (start - targetKg)) * 100)));
-    return { pct, remaining: Math.abs(current - targetKg), reached };
+  function computeWeightGoalProgress(startKg, currentKg, targetKg) {
+    if (startKg == null || currentKg == null || targetKg == null) return null;
+    if (startKg === targetKg) return null;
+    const reached = (startKg > targetKg && currentKg <= targetKg) || (startKg < targetKg && currentKg >= targetKg);
+    const pct = reached ? 100 : Math.max(0, Math.min(100, Math.round(((startKg - currentKg) / (startKg - targetKg)) * 100)));
+    return { pct, remaining: Math.abs(currentKg - targetKg), reached };
   }
 
   let measurementSelectedType = "taille";
@@ -2421,20 +2945,27 @@
     const latest = weights.length ? weights[weights.length - 1] : null;
     const first = weights.length ? weights[0] : null;
 
+    const trend = computeWeightTrend(weights);
+    const latestTrend = trend.length ? trend[trend.length - 1] : null;
+
     let statsHTML = `<div class="empty-hint">Noch kein Gewicht erfasst. Trag dein erstes Gewicht unten ein.</div>`;
+    let plateauHTML = "";
+    let goalDateHTML = "";
     if (latest) {
-      const totalChange = first && first.id !== latest.id ? latest.kg - first.kg : null;
+      const totalChange = first && latestTrend ? latestTrend.value - first.kg : null;
       const thirtyDaysAgoISO = toISO(addDays(fromISO(latest.date), -30));
-      const refPoint = findNearestWeightBefore(weights.filter((w) => w.date !== latest.date), thirtyDaysAgoISO) || findNearestWeightBefore(weights.filter((w) => w.date !== latest.date), latest.date);
-      const monthChange = refPoint ? latest.kg - refPoint.kg : null;
+      const trendRefCandidates = trend.filter((t) => t.date <= thirtyDaysAgoISO);
+      const trendRef = trendRefCandidates.length ? trendRefCandidates[trendRefCandidates.length - 1] : trend[0];
+      const monthChange = trendRef && latestTrend && trendRef.id !== latestTrend.id ? latestTrend.value - trendRef.value : null;
       const fmtChange = (v) => (v == null ? "–" : `${v > 0 ? "+" : ""}${v.toFixed(1)} kg`);
-      const goalProgress = computeWeightGoalProgress(weights, settings.targetWeightKg);
+      const goalProgress = computeWeightGoalProgress(first.kg, latestTrend.value, settings.targetWeightKg);
+      const rawVsTrendDiff = latest.kg - latestTrend.value;
       statsHTML = `
         <div class="stat-grid" style="margin-bottom:0;">
-          <div class="stat-box"><div class="stat-value">${latest.kg.toFixed(1)} kg</div><div class="stat-label">AKTUELLES GEWICHT</div></div>
-          <div class="stat-box"><div class="stat-value">${fmtChange(monthChange)}</div><div class="stat-label">LETZTE 30 TAGE</div></div>
+          <div class="stat-box"><div class="stat-value">${latestTrend.value.toFixed(1)} kg</div><div class="stat-label">TRENDGEWICHT</div></div>
+          <div class="stat-box"><div class="stat-value">${fmtChange(monthChange)}</div><div class="stat-label">LETZTE 30 TAGE (TREND)</div></div>
         </div>
-        <div class="small muted" style="margin-top:12px;">Gesamtverlauf seit ${formatShortDate(fromISO(first.date))}: <strong>${fmtChange(totalChange)}</strong></div>
+        <div class="small muted" style="margin-top:12px;">Letzter Rohwert (${formatShortDate(fromISO(latest.date))}): <strong>${latest.kg.toFixed(1)} kg</strong>${Math.abs(rawVsTrendDiff) >= 0.15 ? ` <span style="opacity:.75;">(${rawVsTrendDiff > 0 ? "+" : ""}${rawVsTrendDiff.toFixed(1)} kg zum Trend – normale Tagesschwankung)</span>` : ""} · Gesamtverlauf seit ${formatShortDate(fromISO(first.date))}: <strong>${fmtChange(totalChange)}</strong></div>
         ${goalProgress ? `
           <div class="row-between" style="margin-top:14px;">
             <span class="field-label" style="margin-bottom:0;">Zielgewicht ${settings.targetWeightKg.toFixed(1)} kg</span>
@@ -2443,10 +2974,26 @@
           <div class="progress-bar-lg" style="margin-top:8px;"><div class="fill" style="width:${goalProgress.pct}%"></div></div>
         ` : ""}
       `;
+
+      const plateau = detectWeightPlateau(trend);
+      if (plateau) {
+        plateauHTML = `
+          <div class="card" style="background:var(--accent-soft-2); border:1px solid var(--border);">
+            <div class="small" style="line-height:1.5;">📊 <strong>Dein Trendgewicht ist seit ${plateau.days} Tagen stabil</strong> (±0,3 kg). Das ist normal – Plateaus gehören zum Abnehmen dazu, oft durch Wassereinlagerungen, Muskelaufbau oder eine natürliche Verlangsamung. Es bedeutet nicht, dass nichts passiert. Bleib dran, meistens geht es danach weiter.</div>
+          </div>
+        `;
+      }
+
+      if (settings.targetWeightKg != null && !(goalProgress && goalProgress.reached)) {
+        const projection = computeGoalDateProjection(trend, settings.targetWeightKg);
+        if (projection && projection.status === "ok") {
+          goalDateHTML = `<div class="small muted" style="margin-top:10px;">Bei aktuellem Tempo (Ø ${Math.abs(projection.ratePerWeek).toFixed(2)} kg/Woche) Ziel erreicht am ca. <strong>${formatShortDate(projection.date)}</strong>.</div>`;
+        }
+      }
     }
 
-    const chartSVG = buildLineChartSVG(weights.map((w) => ({ id: w.id, date: w.date, value: w.kg })), "#FF4D8D", " kg");
-    const chartHTML = chartSVG ? chartSVG : `<div class="chart-empty">Sobald mindestens 2 Einträge vorhanden sind, siehst du hier den Verlauf als Diagramm.</div>`;
+    const chartSVG = buildWeightTrendChartSVG(weights, trend, " kg");
+    const chartHTML = chartSVG ? chartSVG : `<div class="chart-empty">Sobald mindestens 2 Einträge vorhanden sind, siehst du hier den Trend als Diagramm.</div>`;
 
     const historyRows = weights.length
       ? weights.slice().reverse().map((w) => `
@@ -2491,6 +3038,9 @@
 
       <h2 class="section-title">Verlauf</h2>
       <div class="card chart-card">${chartHTML}</div>
+      <div class="small muted" style="margin:-10px 0 4px;">Kräftige Linie = Trend (Ø 14 Tage) · blasse Punkte = einzelne Messungen</div>
+
+      ${plateauHTML}
 
       <h2 class="section-title">Zielgewicht</h2>
       <div class="card">
@@ -2499,6 +3049,7 @@
           <input type="number" id="targetWeightInput" step="0.1" min="0" value="${settings.targetWeightKg != null ? settings.targetWeightKg : ""}" placeholder="optional">
         </div>
         <button class="btn btn-secondary btn-block" id="saveTargetWeightBtn" style="margin-top:12px;">Zielgewicht speichern</button>
+        ${goalDateHTML}
       </div>
 
       <h2 class="section-title">Eintragen</h2>
@@ -2524,9 +3075,8 @@
 
       <h2 class="section-title">Körpermaße</h2>
       <div class="card">
-        <div class="field" style="margin-bottom:14px;">
-          <label class="field-label">Körperstelle</label>
-          <select id="measureTypeSelect">${measureTypeOptions}</select>
+        <div class="row-between" style="margin-bottom:14px;">
+          <span class="field-label" style="margin-bottom:0;">Verlauf: ${MEASUREMENT_TYPES[measurementSelectedType].icon} ${MEASUREMENT_TYPES[measurementSelectedType].label}</span>
         </div>
         ${measureStatsHTML}
         <div class="chart-card" style="margin-top:14px;">${measureChartHTML}</div>
@@ -2535,13 +3085,17 @@
       <h2 class="section-title">Maß eintragen</h2>
       <div class="card">
         <form id="measureForm">
+          <div class="field">
+            <label class="field-label">Für welche Körperstelle?</label>
+            <select id="measureTypeSelect">${measureTypeOptions}</select>
+          </div>
           <div class="field-grid">
             <div class="field">
               <label class="field-label">Datum</label>
               <input type="date" id="measureDate" value="${todayISO}" max="${todayISO}">
             </div>
             <div class="field">
-              <label class="field-label">Wert (cm)</label>
+              <label class="field-label" id="measureValueLabel">Wert für ${MEASUREMENT_TYPES[measurementSelectedType].label} (cm)</label>
               <input type="number" id="measureInput" step="0.1" min="0" placeholder="z. B. 74.5">
             </div>
           </div>
@@ -2727,9 +3281,17 @@
           <label class="field-label">Schritte-Ziel</label>
           <input type="number" min="1000" step="500" id="goalStepsInput" value="${settings.stepsGoal}">
         </div>
-        <div class="field" style="margin-bottom:0;">
+        <div class="field">
           <label class="field-label">Wasser-Ziel (ml)</label>
           <input type="number" min="250" step="250" id="goalWaterInput" value="${settings.waterGoalMl}">
+        </div>
+        <div class="field">
+          <label class="field-label">Liegestütze-Ziel (am Stück)</label>
+          <input type="number" min="1" step="1" id="goalPushupsInput" value="${settings.pushupsGoal}">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Plank-Ziel (Sekunden)</label>
+          <input type="number" min="5" step="5" id="goalPlankInput" value="${settings.plankGoalSeconds}">
         </div>
         <button class="btn btn-primary btn-block" id="saveGoalsBtn" style="margin-top:12px;">Ziele speichern</button>
       </div>
@@ -2799,7 +3361,9 @@
     document.getElementById("saveGoalsBtn").addEventListener("click", () => {
       const steps = Math.max(1000, parseInt(document.getElementById("goalStepsInput").value, 10) || DEFAULT_STEPS_GOAL);
       const water = Math.max(250, parseInt(document.getElementById("goalWaterInput").value, 10) || DEFAULT_WATER_GOAL_ML);
-      Storage.saveSettings({ stepsGoal: steps, waterGoalMl: water });
+      const pushups = Math.max(1, parseInt(document.getElementById("goalPushupsInput").value, 10) || DEFAULT_PUSHUPS_GOAL);
+      const plank = Math.max(5, parseInt(document.getElementById("goalPlankInput").value, 10) || DEFAULT_PLANK_GOAL_SECONDS);
+      Storage.saveSettings({ stepsGoal: steps, waterGoalMl: water, pushupsGoal: pushups, plankGoalSeconds: plank });
       showToast("Ziele gespeichert");
     });
 
@@ -2923,6 +3487,8 @@
     initNav();
     initPostGenerator();
     initMonthPostGenerator();
+    initChallengePostGenerator();
+    initHighlightGenerator();
     renderHeute();
     initServiceWorker();
   });
