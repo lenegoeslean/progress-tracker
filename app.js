@@ -43,6 +43,25 @@
   const DEFAULT_PLANK_GOAL_SECONDS = 60;
   const STREAK_FREEZE_PER_MONTH = 1;
 
+  /* Chaos-Modus: an ~jedem 3. Tag (deterministisch pro Datum, kein
+     Neu-Würfeln bei jedem Rendern) taucht statt der üblichen Routine eine
+     verrückte Mini-Challenge auf – bewusste Unberechenbarkeit gegen die
+     Monotonie im Alltag. */
+  const CHAOS_CHALLENGES = [
+    { icon: "🔄", text: "Rückwärts zählen beim Plank – von deinem Ziel runter bis 0." },
+    { icon: "💃", text: "2 Minuten zu deinem Lieblingssong tanzen, so albern wie möglich." },
+    { icon: "🐢", text: "Zeitlupen-Training: alle Übungen heute doppelt so langsam wie sonst." },
+    { icon: "🤫", text: "Ein Workout in völliger Stille – keine Musik, kein Podcast, nur du." },
+    { icon: "🙃", text: "Bei jeder Übung heute laut lachen oder grinsen – Quatsch-Pflicht." },
+    { icon: "🖐️", text: "Alles, was geht, heute mit der ungewohnten Seite/Hand machen." },
+    { icon: "🎲", text: "Denk dir eine Zahl zwischen 1 und 6 aus und mach so viele Extra-Liegestütze." },
+    { icon: "📸", text: "Nach dem Workout eine Siegerpose fotografieren – nur für dich." },
+    { icon: "🌙", text: "Ein Teil deines Workouts mit geschlossenen Augen (nur bei sicheren Übungen)." },
+    { icon: "🧦", text: "Heute alles in den lustigsten Socken machen, die du besitzt." },
+    { icon: "🚶", text: "Erst überlegen, wo du in 15 Minuten sein willst – dann rückwärts-geplant losgehen." },
+    { icon: "🗣️", text: "Dir selbst laut ein Kompliment machen, bevor du heute startest." }
+  ];
+
   const MEASUREMENT_TYPES = {
     taille:       { label: "Taille",       icon: "📏" },
     huefte:       { label: "Hüfte",        icon: "📏" },
@@ -224,6 +243,7 @@
       if (!this._cache.weights) this._cache.weights = [];
       if (!this._cache.measurements) this._cache.measurements = [];
       if (!this._cache.settings) this._cache.settings = {};
+      if (!this._cache.selfMessages) this._cache.selfMessages = [];
       return this._cache;
     },
     save() {
@@ -236,7 +256,7 @@
     },
     getEntry(dateISO) {
       const data = this.load();
-      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false, water: 0, pushups: null, plankSeconds: null, stretchingDone: false };
+      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false, water: 0, pushups: null, plankSeconds: null, stretchingDone: false, chaosDone: false };
     },
     setEntry(dateISO, entry) {
       const data = this.load();
@@ -319,12 +339,26 @@
       data.measurements.push(entry);
       this.save();
     },
+    getSelfMessages() {
+      const data = this.load();
+      return data.selfMessages.slice().sort((a, b) => a.date.localeCompare(b.date));
+    },
+    addSelfMessage(text) {
+      const data = this.load();
+      data.selfMessages.push({ id: genId(), date: toISO(new Date()), text });
+      this.save();
+    },
+    deleteSelfMessage(id) {
+      const data = this.load();
+      data.selfMessages = data.selfMessages.filter((m) => m.id !== id);
+      this.save();
+    },
     getSettings() {
       const data = this.load();
       return Object.assign({
         theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
         weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
-        targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS
+        targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS, chaosMode: true
       }, data.settings);
     },
     saveSettings(patch) {
@@ -344,11 +378,12 @@
       if (!this._cache.weights) this._cache.weights = [];
       if (!this._cache.measurements) this._cache.measurements = [];
       if (!this._cache.settings) this._cache.settings = {};
+      if (!this._cache.selfMessages) this._cache.selfMessages = [];
       this.save();
     },
     resetTrackingData() {
       const data = this.load();
-      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], settings: data.settings || {} };
+      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], settings: data.settings || {}, selfMessages: data.selfMessages || [] };
       this.save();
     }
   };
@@ -847,19 +882,278 @@
   /* Tab: Heute                                                         */
   /* ---------------------------------------------------------------- */
 
+  /* ---------------------------------------------------------------- */
+  /* Giraffen-Begleiter                                                 */
+  /* Wächst mit der Gesamt-Konsistenz, Stimmung folgt der aktuellen     */
+  /* Streak/heutigen Aktivität, Accessoires werden durch die            */
+  /* bestehenden Erfolgs-Badges freigeschaltet. Rein aus vorhandenen    */
+  /* Daten abgeleitet, keine eigene Speicherung nötig.                  */
+  /* ---------------------------------------------------------------- */
+
+  const COMPANION_STAGES = [
+    { min: 0, key: "baby", label: "Baby-Giraffe", size: 118, spots: 3 },
+    { min: 7, key: "young", label: "Junge Giraffe", size: 140, spots: 5 },
+    { min: 30, key: "adult", label: "Erwachsene Giraffe", size: 160, spots: 7 },
+    { min: 100, key: "majestic", label: "Stolze Giraffe", size: 176, spots: 9, crown: true }
+  ];
+
+  const COMPANION_ACCESSORIES = [
+    { key: "bandana", emoji: "🎀", badgeLabel: "7-Tage-Serie", title: "7-Tage-Serie" },
+    { key: "sunglasses", emoji: "🕶️", badgeLabel: "30-Tage-Serie", title: "30-Tage-Serie" },
+    { key: "scarf", emoji: "🧣", badgeLabel: "Zielstrebig", title: "Zielstrebig" },
+    { key: "flower", emoji: "🌸", badgeLabel: "Perfekte Woche", title: "Perfekte Woche" },
+    { key: "medal", emoji: "🏅", badgeLabel: "100 Einheiten", title: "100 Einheiten" },
+    { key: "hat", emoji: "🎩", badgeLabel: "50 aktive Tage", title: "50 aktive Tage" }
+  ];
+
+  function computeCompanionState() {
+    const streaks = computeStreaks();
+    const badges = computeBadges();
+    let stage = COMPANION_STAGES[0];
+    COMPANION_STAGES.forEach((s) => { if (streaks.totalActiveDays >= s.min) stage = s; });
+    const stageIdx = COMPANION_STAGES.indexOf(stage);
+    const next = COMPANION_STAGES[stageIdx + 1] || null;
+
+    const todayISO = toISO(new Date());
+    const t = Storage.getEntry(todayISO);
+    const todayActive = !!(
+      t.steps || (t.activities && t.activities.some((a) => a.type !== "restday")) ||
+      t.pushups || t.plankSeconds || t.stretchingDone || t.challengeChecked
+    );
+    let mood = "neutral";
+    if (streaks.current === 0) mood = "sad";
+    else if (todayActive) mood = "happy";
+
+    const accessories = COMPANION_ACCESSORIES.map((a) => Object.assign({}, a, {
+      earned: badges.some((b) => b.label === a.badgeLabel && b.earned)
+    }));
+
+    return { stage, next, mood, accessories, totalActiveDays: streaks.totalActiveDays, currentStreak: streaks.current };
+  }
+
+  const COMPANION_SPOT_POSITIONS_NORMAL = [
+    [88, 130], [113, 118], [96, 100], [107, 148], [90, 160],
+    [112, 80], [98, 62], [82, 148], [118, 135]
+  ];
+  const COMPANION_SPOT_POSITIONS_BABY = [
+    [90, 160], [111, 150], [97, 135], [105, 175], [88, 178],
+    [114, 168], [100, 120], [92, 145], [108, 130]
+  ];
+
+  function buildCompanionFaceSVG(cx, cy, mood, scale) {
+    const s = scale || 1;
+    const eyeDX = 7 * s, eyeDY = 1 * s;
+    if (mood === "happy") {
+      const l = cx - eyeDX, r = cx + eyeDX, ey = cy + eyeDY;
+      return `
+        <path d="M${l - 4 * s},${ey} Q${l},${ey - 5 * s} ${l + 4 * s},${ey}" stroke="#3E2723" stroke-width="${1.6 * s}" fill="none" stroke-linecap="round"/>
+        <path d="M${r - 4 * s},${ey} Q${r},${ey - 5 * s} ${r + 4 * s},${ey}" stroke="#3E2723" stroke-width="${1.6 * s}" fill="none" stroke-linecap="round"/>
+        <path d="M${cx - 6 * s},${cy + 9 * s} Q${cx},${cy + 14 * s} ${cx + 6 * s},${cy + 9 * s}" stroke="#3E2723" stroke-width="${1.6 * s}" fill="none" stroke-linecap="round"/>
+      `;
+    }
+    if (mood === "sad") {
+      const l = cx - eyeDX, r = cx + eyeDX, ey = cy + eyeDY;
+      return `
+        <circle cx="${l}" cy="${ey}" r="${1.8 * s}" fill="#3E2723"/>
+        <circle cx="${r}" cy="${ey}" r="${1.8 * s}" fill="#3E2723"/>
+        <path d="M${cx - 6 * s},${cy + 13 * s} Q${cx},${cy + 8 * s} ${cx + 6 * s},${cy + 13 * s}" stroke="#3E2723" stroke-width="${1.6 * s}" fill="none" stroke-linecap="round"/>
+      `;
+    }
+    const l = cx - eyeDX, r = cx + eyeDX, ey = cy + eyeDY;
+    return `
+      <circle cx="${l}" cy="${ey}" r="${1.8 * s}" fill="#3E2723"/>
+      <circle cx="${r}" cy="${ey}" r="${1.8 * s}" fill="#3E2723"/>
+      <line x1="${cx - 5 * s}" y1="${cy + 11 * s}" x2="${cx + 5 * s}" y2="${cy + 11 * s}" stroke="#3E2723" stroke-width="${1.6 * s}" stroke-linecap="round"/>
+    `;
+  }
+
+  function buildCompanionSVG(stage, mood) {
+    const isBaby = stage.key === "baby";
+    const bodyColor = "#F6D9A6", darkColor = "#E0B679", spotColor = "#C97A3B", muzzleColor = "#FBEAD0";
+    const spots = (isBaby ? COMPANION_SPOT_POSITIONS_BABY : COMPANION_SPOT_POSITIONS_NORMAL)
+      .slice(0, stage.spots)
+      .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="5" fill="${spotColor}" opacity="0.85"/>`)
+      .join("");
+
+    if (isBaby) {
+      return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
+        <ellipse cx="118" cy="212" rx="34" ry="5" fill="#000" opacity="0.06"/>
+        <rect x="76" y="185" width="9" height="24" rx="4.5" fill="${darkColor}"/>
+        <rect x="90" y="188" width="9" height="24" rx="4.5" fill="${darkColor}"/>
+        <rect x="106" y="188" width="9" height="24" rx="4.5" fill="${darkColor}"/>
+        <rect x="120" y="185" width="9" height="24" rx="4.5" fill="${darkColor}"/>
+        <ellipse cx="100" cy="182" rx="36" ry="24" fill="${bodyColor}"/>
+        <path d="M84,168 C82,145 84,118 90,100 L112,100 C116,118 118,145 116,168 Z" fill="${bodyColor}"/>
+        <ellipse cx="100" cy="93" rx="27" ry="22" fill="${bodyColor}"/>
+        <ellipse cx="78" cy="82" rx="8" ry="10" fill="${bodyColor}"/>
+        <ellipse cx="122" cy="82" rx="8" ry="10" fill="${bodyColor}"/>
+        <rect x="90" y="66" width="4" height="12" rx="2" fill="${bodyColor}"/>
+        <rect x="106" y="66" width="4" height="12" rx="2" fill="${bodyColor}"/>
+        <circle cx="92" cy="66" r="4.5" fill="${darkColor}"/>
+        <circle cx="108" cy="66" r="4.5" fill="${darkColor}"/>
+        <ellipse cx="100" cy="106" rx="12" ry="8" fill="${muzzleColor}"/>
+        ${spots}
+        ${stage.crown ? `<path d="M84,60 L90,44 L100,56 L110,44 L116,60 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+        ${buildCompanionFaceSVG(100, 100, mood, 1.05)}
+      </svg>`;
+    }
+
+    return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
+      <ellipse cx="100" cy="207" rx="42" ry="6" fill="#000" opacity="0.06"/>
+      <rect x="72" y="168" width="10" height="42" rx="5" fill="${darkColor}"/>
+      <rect x="86" y="172" width="10" height="42" rx="5" fill="${darkColor}"/>
+      <rect x="104" y="172" width="10" height="42" rx="5" fill="${darkColor}"/>
+      <rect x="118" y="168" width="10" height="42" rx="5" fill="${darkColor}"/>
+      <ellipse cx="100" cy="165" rx="41" ry="27" fill="${bodyColor}"/>
+      <path d="M85,150 C85,108 92,68 94,44 L106,44 C108,68 115,108 115,150 Z" fill="${bodyColor}"/>
+      <ellipse cx="100" cy="37" rx="21" ry="17" fill="${bodyColor}"/>
+      <ellipse cx="81" cy="26" rx="8" ry="6" fill="${bodyColor}" transform="rotate(-20 81 26)"/>
+      <ellipse cx="119" cy="26" rx="8" ry="6" fill="${bodyColor}" transform="rotate(20 119 26)"/>
+      <rect x="91" y="12" width="4" height="13" rx="2" fill="${bodyColor}"/>
+      <rect x="105" y="12" width="4" height="13" rx="2" fill="${bodyColor}"/>
+      <circle cx="93" cy="12" r="4.5" fill="${darkColor}"/>
+      <circle cx="107" cy="12" r="4.5" fill="${darkColor}"/>
+      <ellipse cx="100" cy="49" rx="10" ry="7" fill="${muzzleColor}"/>
+      ${spots}
+      ${stage.crown ? `<path d="M83,8 L90,-8 L100,4 L110,-8 L117,8 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      ${buildCompanionFaceSVG(100, 44, mood, 1)}
+    </svg>`;
+  }
+
+  function buildCompanionHTML() {
+    const state = computeCompanionState();
+    const svg = buildCompanionSVG(state.stage, state.mood);
+    const moodText = state.mood === "happy"
+      ? "Sie freut sich – du warst heute schon aktiv! 🎉"
+      : state.mood === "sad"
+        ? "Deine Streak ist gerissen – ein kleiner Schritt heute baut sie wieder auf."
+        : "Sie wartet gespannt auf deine erste Aktivität heute.";
+    const nextText = state.next
+      ? `Noch ${state.next.min - state.totalActiveDays} aktive Tage bis „${state.next.label}"`
+      : "Höchste Stufe erreicht – mehr geht nicht mehr! 🏆";
+    const accessoriesHTML = state.accessories.map((a) => `
+      <span class="companion-acc${a.earned ? " earned" : ""}" title="${esc(a.title)}${a.earned ? "" : " (noch nicht freigeschaltet)"}">${a.emoji}</span>
+    `).join("");
+    return `
+      <div class="card companion-card">
+        <div class="companion-row">
+          <div class="companion-svg-wrap">${svg}</div>
+          <div class="companion-info">
+            <div class="companion-stage">${esc(state.stage.label)}</div>
+            <div class="small muted">${esc(nextText)}</div>
+            <div class="companion-mood">${esc(moodText)}</div>
+          </div>
+        </div>
+        <div class="companion-accessories">${accessoriesHTML}</div>
+      </div>
+    `;
+  }
+
+  /* Einfacher, deterministischer String-Hash (djb2) – dient dazu, aus
+     einem Datum ohne Zufallsgenerator (und damit stabil bei jedem
+     Neu-Rendern) eine Zahl abzuleiten. */
+  function hashString(str) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function getChaosChallengeForDate(dateISO) {
+    const settings = Storage.getSettings();
+    if (settings.chaosMode === false) return null;
+    const h = hashString("chaos-" + dateISO);
+    if (h % 3 !== 0) return null; // an ca. jedem 3. Tag
+    const idx = Math.floor(h / 3) % CHAOS_CHALLENGES.length;
+    return CHAOS_CHALLENGES[idx];
+  }
+
+  function buildChaosCardHTML(dateISO, chaos) {
+    const entry = Storage.getEntry(dateISO);
+    return `
+      <div class="card chaos-card">
+        <div class="chaos-card-label">🎲 Chaos-Challenge des Tages</div>
+        <div class="chaos-card-text"><span class="chaos-icon">${chaos.icon}</span> ${esc(chaos.text)}</div>
+        <label class="chaos-check-row">
+          <input type="checkbox" id="chaosCheck" ${entry.chaosDone ? "checked" : ""}>
+          <span>Gemeistert!</span>
+        </label>
+      </div>
+    `;
+  }
+
+  /* Nachrichten an dich selbst: taucht eine Nachricht auf, die man sich
+     früher selbst geschrieben hat, wenn gerade eine schwierige Phase
+     erkannt wird (eine bestehende Streak ist frisch gerissen). Wird pro
+     Tag höchstens einmal angezeigt (danach per Settings-Flag
+     ausgeblendet), taucht am nächsten Tag aber wieder auf, solange die
+     Situation anhält. */
+  function pickSelfMessageForDate(dateISO, messages) {
+    if (!messages.length) return null;
+    const h = hashString("selfmsg-" + dateISO);
+    return messages[h % messages.length];
+  }
+
+  function shouldShowSelfMessage(dateISO) {
+    const settings = Storage.getSettings();
+    if (settings.lastSelfMessageDismissedDate === dateISO) return false;
+    const messages = Storage.getSelfMessages();
+    if (!messages.length) return false;
+    const streaks = computeStreaks();
+    return streaks.current === 0 && streaks.longest >= 3;
+  }
+
+  function buildSelfMessageCardHTML(dateISO) {
+    if (!shouldShowSelfMessage(dateISO)) return "";
+    const msg = pickSelfMessageForDate(dateISO, Storage.getSelfMessages());
+    if (!msg) return "";
+    return `
+      <div class="card self-message-card">
+        <div class="self-message-label">💌 Eine Nachricht von dir an dich</div>
+        <div class="self-message-text">„${esc(msg.text)}"</div>
+        <div class="self-message-date">geschrieben am ${formatShortDate(fromISO(msg.date))}</div>
+        <button type="button" class="btn btn-ghost btn-sm self-message-dismiss" style="margin-top:10px;">Danke, gelesen 💛</button>
+      </div>
+    `;
+  }
+
+  function bindSelfMessageCard(dateISO) {
+    const btn = document.querySelector(".self-message-dismiss");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      Storage.saveSettings({ lastSelfMessageDismissedDate: dateISO });
+      renderHeute();
+    });
+  }
+
   function renderHeute() {
     const container = document.getElementById("tab-heute");
     const today = new Date();
     const dateISO = toISO(today);
     const hour = today.getHours();
     const greeting = hour < 11 ? "Guten Morgen ☀️" : hour < 18 ? "Schön, dass du da bist 👋" : "Guten Abend 🌙";
+    const chaos = getChaosChallengeForDate(dateISO);
     container.innerHTML = `
       <div class="hero-card">
         <div class="hero-greeting">${greeting}</div>
         <div class="hero-date">${formatWeekdayDate(today)}</div>
       </div>
+      ${buildCompanionHTML()}
+      ${chaos ? buildChaosCardHTML(dateISO, chaos) : ""}
+      ${buildSelfMessageCardHTML(dateISO)}
       <div id="heuteEditor"></div>
     `;
+    if (chaos) {
+      const chaosCheck = document.getElementById("chaosCheck");
+      if (chaosCheck) {
+        chaosCheck.addEventListener("change", () => {
+          Storage.updateEntry(dateISO, (e) => { e.chaosDone = chaosCheck.checked; });
+          if (chaosCheck.checked) showToast("🎲 Chaos-Challenge gemeistert!");
+        });
+      }
+    }
+    bindSelfMessageCard(dateISO);
     const editorRoot = document.getElementById("heuteEditor");
     editorRoot.innerHTML = entryEditorHTML(dateISO);
     bindEntryEditor(editorRoot, dateISO, renderHeute);
@@ -2615,6 +2909,117 @@
     return { label: "±0%", cls: "flat" };
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Datenkunst-Generator                                               */
+  /* Verwandelt Gewichtstrend, aktive Tage, Streak und Erfolge der       */
+  /* letzten 12 Wochen in ein abstraktes, generatives Bild – ein         */
+  /* digitales "Andenken" statt eines Charts. Reines Canvas, kein        */
+  /* html2canvas nötig, funktioniert daher auch ohne CDN.                */
+  /* ---------------------------------------------------------------- */
+
+  function computeArtData() {
+    const curWeekStart = startOfWeek(new Date());
+    const weeks = [];
+    for (let i = 11; i >= 0; i--) {
+      const ws = addDays(curWeekStart, -7 * i);
+      const we = addDays(ws, 6);
+      let activeDays = 0;
+      for (let d = 0; d < 7; d++) {
+        const e = Storage.getEntry(toISO(addDays(ws, d)));
+        const active = (e.activities && e.activities.some((a) => a.type !== "restday")) || (e.steps && e.steps > 0);
+        if (active) activeDays++;
+      }
+      const wNow = getWeightForWeek(ws, we);
+      const wPrev = getWeightForWeek(addDays(ws, -7), addDays(ws, -1));
+      const delta = (wNow != null && wPrev != null) ? wNow - wPrev : null;
+      weeks.push({ activeDays, delta });
+    }
+    const streaks = computeStreaks();
+    const earnedCount = computeBadges().filter((b) => b.earned).length;
+    return { weeks, currentStreak: streaks.current, earnedCount };
+  }
+
+  function drawDataArt(canvas) {
+    const data = computeArtData();
+    const size = canvas.width;
+    const ctx = canvas.getContext("2d");
+    const cx = size / 2, cy = size / 2;
+
+    const bg = ctx.createRadialGradient(cx, cy, size * 0.04, cx, cy, size * 0.72);
+    bg.addColorStop(0, "#2E2148");
+    bg.addColorStop(1, "#140F22");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, size, size);
+
+    const maxR = size * 0.43, minR = size * 0.15;
+    const n = data.weeks.length;
+    data.weeks.forEach((w, i) => {
+      const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      const len = minR + (w.activeDays / 7) * (maxR - minR);
+      let color;
+      if (w.delta == null) color = "rgba(210,200,230,0.4)";
+      else if (w.delta < -0.05) color = "#5FD9B4";
+      else if (w.delta > 0.05) color = "#F2A65A";
+      else color = "#C9A6F2";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size * 0.017;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * minR, cy + Math.sin(angle) * minR);
+      ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+      ctx.stroke();
+    });
+
+    for (let i = 0; i < data.earnedCount; i++) {
+      const a = (i / Math.max(1, data.earnedCount)) * Math.PI * 2 + 0.4;
+      const r = minR * 0.55;
+      const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+      ctx.fillStyle = "#F2E9C9";
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.007, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const coreR = size * 0.05 + Math.min(size * 0.085, data.currentStreak * size * 0.005);
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2);
+    coreGrad.addColorStop(0, "#FFEFD6");
+    coreGrad.addColorStop(1, "rgba(255,180,120,0)");
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath(); ctx.arc(cx, cy, coreR * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#FFD9A0";
+    ctx.beginPath(); ctx.arc(cx, cy, coreR, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function downloadDataArt() {
+    const canvas = document.getElementById("dataArtCanvas");
+    const btn = document.getElementById("dataArtDownloadBtn");
+    if (!canvas || !btn) return;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Wird erstellt …";
+    canvas.toBlob(async (blob) => {
+      if (!blob) { alert("Export fehlgeschlagen: Bild konnte nicht erzeugt werden."); btn.disabled = false; btn.textContent = original; return; }
+      const filename = `datenkunst_${toISO(new Date())}.png`;
+      const shared = await sharePostImage(blob, filename);
+      if (shared) { btn.disabled = false; btn.textContent = original; return; }
+      const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+      if (!isIOS) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      } else {
+        showPostSaveFallback(blob);
+      }
+      btn.disabled = false;
+      btn.textContent = original;
+    }, "image/png");
+  }
+
   function renderTrends() {
     const container = document.getElementById("tab-trends");
     const today = new Date();
@@ -2751,6 +3156,13 @@
         </div>
       </div>
       <div class="card" id="historyResults"></div>
+
+      <h2 class="section-title">Deine Datenkunst</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:12px;">Ein generatives Bild aus deinen letzten 12 Wochen: jeder Strahl ist eine Woche (Länge = aktive Tage), die Farbe zeigt die Gewichtsrichtung (🟢 runter · 🟣 stabil · 🟠 hoch), der Kern in der Mitte wächst mit deiner aktuellen Streak, die kleinen Funken zählen deine Erfolge.</div>
+        <div class="data-art-canvas-wrap"><canvas id="dataArtCanvas" width="1000" height="1000"></canvas></div>
+        <button class="btn btn-secondary btn-block" id="dataArtDownloadBtn" style="margin-top:14px;">🖼️ Als Bild speichern</button>
+      </div>
     `;
 
     const historyResults = document.getElementById("historyResults");
@@ -2759,6 +3171,11 @@
     historyFilterSelect.addEventListener("change", () => {
       renderActivityHistoryResults(historyResults, historyFilterSelect.value);
     });
+
+    const dataArtCanvas = document.getElementById("dataArtCanvas");
+    if (dataArtCanvas) drawDataArt(dataArtCanvas);
+    const dataArtDownloadBtn = document.getElementById("dataArtDownloadBtn");
+    if (dataArtDownloadBtn) dataArtDownloadBtn.addEventListener("click", downloadDataArt);
   }
 
   function getAllActivitiesFlat() {
@@ -3243,6 +3660,17 @@
       return `<button type="button" class="theme-swatch${active ? " active" : ""}" data-theme="${key}" style="background:${t.swatch};" aria-label="${t.name}"></button>`;
     }).join("");
 
+    const selfMessages = Storage.getSelfMessages();
+    const selfMessagesHTML = selfMessages.length
+      ? selfMessages.slice().reverse().map((m) => `
+        <div class="type-row">
+          <span class="small" style="flex:1; margin-right:10px;">„${escapeHtml(m.text)}"</span>
+          <div class="item-actions">
+            <button class="del-btn" data-del-selfmsg="${m.id}" aria-label="Löschen">✕</button>
+          </div>
+        </div>`).join("")
+      : `<div class="empty-hint">Noch keine Nachrichten gespeichert.</div>`;
+
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">Einstellungen</h2>
 
@@ -3318,6 +3746,25 @@
         <div class="small muted" style="margin-top:10px;">Erscheint als Fortschrittsbalken oben im Tab „Woche".</div>
       </div>
 
+      <h2 class="section-title">🎲 Chaos-Modus</h2>
+      <div class="card">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;">
+          <span class="field-label" style="margin-bottom:0;">Ab und zu eine verrückte Mini-Challenge statt der Routine</span>
+          <input type="checkbox" id="chaosModeInput" ${settings.chaosMode !== false ? "checked" : ""} style="width:20px;height:20px;flex-shrink:0;">
+        </label>
+        <div class="small muted" style="margin-top:10px;">An ca. jedem 3. Tag erscheint im Tab „Heute" statt der gewohnten Ansicht eine unerwartete kleine Aufgabe – bewusste Abwechslung gegen Monotonie.</div>
+      </div>
+
+      <h2 class="section-title">💌 Nachrichten an dich selbst</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:10px;">Schreib dir eine Nachricht, die dich in einer schwierigen Phase wieder motiviert – dein eigenes „Warum". Sie taucht automatisch auf, wenn eine Streak gerissen ist.</div>
+        <div class="field" style="margin-bottom:10px;">
+          <textarea id="selfMessageInput" rows="3" placeholder="z. B. Denk daran, warum du angefangen hast …" style="resize:vertical;"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" id="saveSelfMessageBtn">Nachricht speichern</button>
+        <div style="margin-top:14px;">${selfMessagesHTML}</div>
+      </div>
+
       <h2 class="section-title">Daten</h2>
       <div class="card">
         <div class="small muted" style="margin-bottom:10px;">Sichere ein vollständiges Backup aller App-Daten (Workouts, Challenges, Gewicht, Einstellungen) als Datei, oder spiele ein zuvor gesichertes Backup wieder ein. Progress-Fotos sind hier nicht enthalten.</div>
@@ -3381,6 +3828,28 @@
       const minutes = Math.max(10, parseInt(document.getElementById("weeklyGoalMinutesInput").value, 10) || DEFAULT_WEEKLY_GOAL_MINUTES);
       Storage.saveSettings({ weeklyGoalMode: mode, weeklyGoalSessions: sessions, weeklyGoalMinutes: minutes });
       showToast("Wochenziel gespeichert");
+    });
+
+    document.getElementById("chaosModeInput").addEventListener("change", (e) => {
+      Storage.saveSettings({ chaosMode: e.target.checked });
+      showToast(e.target.checked ? "Chaos-Modus aktiviert 🎲" : "Chaos-Modus deaktiviert");
+    });
+
+    document.getElementById("saveSelfMessageBtn").addEventListener("click", () => {
+      const input = document.getElementById("selfMessageInput");
+      const text = input.value.trim();
+      if (!text) { showToast("Bitte zuerst eine Nachricht schreiben."); return; }
+      Storage.addSelfMessage(text);
+      showToast("Nachricht gespeichert 💛");
+      renderEinstellungen();
+    });
+
+    container.querySelectorAll("[data-del-selfmsg]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-selfmsg");
+        Storage.deleteSelfMessage(id);
+        renderEinstellungen();
+      });
     });
 
     document.getElementById("exportAllBtn").addEventListener("click", () => {

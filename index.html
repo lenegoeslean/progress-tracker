@@ -302,6 +302,32 @@
   .badge-label{font-size:11px; font-weight:700; margin-top:2px;}
   .badge-sub{font-size:9.5px; color:var(--text-muted); line-height:1.3;}
 
+  .companion-card{padding-bottom:14px;}
+  .companion-row{display:flex; align-items:center; gap:16px;}
+  .companion-svg-wrap{flex:0 0 auto; display:flex; align-items:flex-end; justify-content:center; min-width:118px;}
+  .companion-svg-wrap svg{display:block;}
+  .companion-info{flex:1; min-width:0;}
+  .companion-stage{font-size:16px; font-weight:800; color:var(--text); margin-bottom:2px;}
+  .companion-mood{font-size:12.5px; font-weight:600; color:var(--accent-dark); margin-top:6px; line-height:1.4;}
+  .companion-accessories{display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); flex-wrap:wrap;}
+  .companion-acc{font-size:19px; opacity:0.3; filter:grayscale(1); transition:opacity .15s;}
+  .companion-acc.earned{opacity:1; filter:none;}
+
+  .data-art-canvas-wrap{width:100%; aspect-ratio:1/1; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-md);}
+  .data-art-canvas-wrap canvas{width:100%; height:100%; display:block;}
+
+  .chaos-card{background:linear-gradient(135deg, var(--accent-soft-2), var(--accent-soft)); border:1px dashed var(--accent);}
+  .chaos-card-label{font-size:13px; font-weight:800; color:var(--accent-dark); margin-bottom:8px;}
+  .chaos-card-text{font-size:14.5px; font-weight:600; line-height:1.5;}
+  .chaos-icon{font-size:18px; margin-right:4px;}
+  .chaos-check-row{display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer; font-size:13px; font-weight:700;}
+  .chaos-check-row input{width:20px; height:20px;}
+
+  .self-message-card{background:var(--card); border:1px solid var(--border); position:relative;}
+  .self-message-label{font-size:13px; font-weight:800; color:var(--accent-dark); margin-bottom:8px;}
+  .self-message-text{font-size:15px; font-weight:600; line-height:1.55; font-style:italic;}
+  .self-message-date{font-size:11px; color:var(--text-muted); margin-top:8px;}
+
   /* calendar */
   .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; text-align:center;}
   .cal-wd{font-size:10.5px; color:var(--text-muted); font-weight:700; padding-bottom:4px;}

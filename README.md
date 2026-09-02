@@ -481,6 +481,60 @@ Die Ziele für Liegestütze und Plank lassen sich unter Einstellungen →
 Tagesziele anpassen. Alle drei Werte werden auch im CSV-Export
 mitgeliefert.
 
+## 29. Giraffen-Begleiter
+
+Statt nur Zahlen anzustarren, hast du jetzt ein App-Maskottchen im
+Heute-Tab, das sich mit deiner Konsistenz weiterentwickelt – nach dem
+Prinzip von Apps wie Finch oder Habitica, bei denen ein Charakter durch
+echte Gewohnheiten wächst statt nur eine Statistik zu optimieren.
+
+- **4 Wachstumsstufen**, abhängig von deinen insgesamt aktiven Tagen:
+  Baby-Giraffe (ab 0 Tagen) → Junge Giraffe (ab 7) → Erwachsene Giraffe
+  (ab 30) → Stolze Giraffe mit Krone (ab 100).
+- **Stimmung**: traurig, wenn deine aktuelle Streak gerissen ist,
+  fröhlich, wenn du heute schon etwas eingetragen hast, sonst neutral
+  wartend.
+- **6 Accessoires zum Freischalten**, gekoppelt an deine bestehenden
+  Erfolge/Badges (Schleife, Sonnenbrille, Schal, Blume, Medaille, Hut) –
+  ausgegraut, solange sie noch nicht verdient sind.
+
+## 30. Datenkunst-Generator
+
+Im Trends-Tab erzeugt die App aus deinen letzten 12 Wochen ein
+abstraktes, sich veränderndes Muster – ein digitales "Andenken" an
+deinen Fortschritt statt eines klassischen Charts, das du dir per Klick
+als Bild speichern oder teilen kannst.
+
+- Jeder **Strahl** steht für eine Woche, seine **Länge** für die Anzahl
+  aktiver Tage in dieser Woche.
+- Die **Farbe** zeigt die Gewichtsrichtung dieser Woche (🟢 runter · 🟣
+  stabil · 🟠 hoch).
+- Der **leuchtende Kern** in der Mitte wächst mit deiner aktuellen
+  Streak, die kleinen **Funken** zählen deine freigeschalteten Erfolge.
+- Export per "🖼️ Als Bild speichern" – auf iOS über das Teilen-Menü
+  bzw. "Bild sichern" (gleiches Verfahren wie bei den anderen
+  Social-Media-Posts), sonst als direkter Download.
+
+## 31. Chaos-Modus
+
+An ca. jedem 3. Tag (deterministisch aus dem Datum berechnet, würfelt
+also nicht bei jedem Neuladen neu) zeigt der Heute-Tab statt der
+gewohnten Routine eine unerwartete kleine "Chaos-Challenge des Tages" –
+bewusste Unberechenbarkeit gegen Monotonie, z. B. "Rückwärts zählen
+beim Plank" oder "2 Minuten zu deinem Lieblingssong tanzen". Ein Haken
+markiert sie als gemeistert. Lässt sich unter Einstellungen →
+Chaos-Modus jederzeit deaktivieren.
+
+## 32. Nachrichten an dich selbst
+
+Unter Einstellungen → Nachrichten an dich selbst kannst du dir Notizen
+schreiben – dein eigenes "Warum", eingefroren für später. Erkennt die
+App eine schwierige Phase (eine bestehende Streak von mindestens 3
+Tagen ist gerade gerissen), taucht automatisch eine dieser Nachrichten
+im Heute-Tab auf. Ein Klick auf "Danke, gelesen" blendet sie für den
+Tag aus; die Nachrichten selbst lassen sich jederzeit verwalten und
+löschen.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
