@@ -29,9 +29,12 @@
     pilates:        { label: "Pilates",          icon: "🫍", bg: "#E9F7EF", fg: "#3F9767", fields: ["zeit", "kalorien"] },
     reformerpilates:{ label: "Reformer-Pilates", icon: "🦒", bg: "#F3E3FF", fg: "#8C4FC9", fields: ["zeit", "kalorien"] },
     padel:          { label: "Padel",            icon: "🐤", bg: "#FFF6C7", fg: "#B8960C", fields: ["zeit", "kalorien"] },
+    activerecovery: { label: "Active Recovery",  icon: "🦥", bg: "#E3F4E1", fg: "#4C8C5B", fields: ["zeit", "kalorien"] },
     custom:         { label: "Sonstiges",        icon: "🦄", bg: "#F1E9FF", fg: "#7C5CBF", fields: ["zeit", "kalorien"], custom: true },
     restday:        { label: "Rest-Day",        icon: "🐼", bg: "#ECEAFB", fg: "#6B5FBD", fields: [] }
   };
+
+  const MAX_RESTDAYS_PER_WEEK = 2;
 
   const DEFAULT_STEPS_GOAL = 10000;
   const DEFAULT_WATER_GOAL_ML = 2000;
@@ -244,6 +247,7 @@
       if (!this._cache.measurements) this._cache.measurements = [];
       if (!this._cache.settings) this._cache.settings = {};
       if (!this._cache.selfMessages) this._cache.selfMessages = [];
+      if (!this._cache.plans) this._cache.plans = {};
       return this._cache;
     },
     save() {
@@ -353,6 +357,22 @@
       data.selfMessages = data.selfMessages.filter((m) => m.id !== id);
       this.save();
     },
+    getPlans(dateISO) {
+      const data = this.load();
+      return data.plans[dateISO] || [];
+    },
+    addPlan(dateISO, plan) {
+      const data = this.load();
+      if (!data.plans[dateISO]) data.plans[dateISO] = [];
+      data.plans[dateISO].push(Object.assign({ id: genId() }, plan));
+      this.save();
+    },
+    deletePlan(dateISO, id) {
+      const data = this.load();
+      if (!data.plans[dateISO]) return;
+      data.plans[dateISO] = data.plans[dateISO].filter((p) => p.id !== id);
+      this.save();
+    },
     getSettings() {
       const data = this.load();
       return Object.assign({
@@ -379,11 +399,12 @@
       if (!this._cache.measurements) this._cache.measurements = [];
       if (!this._cache.settings) this._cache.settings = {};
       if (!this._cache.selfMessages) this._cache.selfMessages = [];
+      if (!this._cache.plans) this._cache.plans = {};
       this.save();
     },
     resetTrackingData() {
       const data = this.load();
-      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], settings: data.settings || {}, selfMessages: data.selfMessages || [] };
+      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], plans: {}, settings: data.settings || {}, selfMessages: data.selfMessages || [] };
       this.save();
     }
   };
@@ -561,6 +582,26 @@
 
     const sportOptions = Object.keys(SPORTS).map((key) => `<option value="${key}">${SPORTS[key].icon} ${SPORTS[key].label}</option>`).join("");
 
+    const plans = Storage.getPlans(dateISO);
+    const planRows = plans.length
+      ? plans.map((p) => {
+          const sport = SPORTS[p.type] || SPORTS.restday;
+          return `
+          <div class="activity-item plan-item" data-plan-id="${p.id}">
+            <div class="info">
+              <div class="icon-badge" style="background:${sport.bg}">${sport.icon}</div>
+              <div>
+                <div>${esc(sport.label)} ist geplant</div>
+                <div class="stats">${p.note ? esc(p.note) : "&nbsp;"}</div>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="del-btn" data-del-plan="${p.id}" aria-label="Löschen">✕</button>
+            </div>
+          </div>`;
+        }).join("")
+      : `<div class="empty-hint">Noch nichts geplant.</div>`;
+
     const challengeBlock = challenge && challenge.text
       ? `<div class="row-between">
            <div class="small" style="max-width:75%;"><strong>Challenge (${wKey.replace("-W", " · KW ")}):</strong> ${esc(challenge.text)}</div>
@@ -634,6 +675,25 @@
 
       <div class="card">
         ${challengeBlock}
+      </div>
+
+      <h2 class="section-title">📅 Geplant</h2>
+      <div class="card">
+        <div class="activity-list">${planRows}</div>
+        <form class="add-plan-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px;">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Sportart</label>
+              <select class="plan-sport-select">${sportOptions}</select>
+            </div>
+            <div class="field">
+              <label class="field-label">Notiz (optional)</label>
+              <input type="text" class="plan-note-input" placeholder="z. B. 5 km, locker" maxlength="60">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block plan-submit-btn" style="margin-top:8px;">+ Plan hinzufügen</button>
+        </form>
+        <div class="small muted" style="margin-top:10px;">Ein Plan wird nur angezeigt – er zählt erst als Aktivität, wenn du sie unten wie gewohnt wirklich einträgst.</div>
       </div>
 
       <h2 class="section-title">Aktivitäten</h2>
@@ -710,6 +770,19 @@
     }
   }
 
+  /* Höchstens 2 Rest-Days pro Kalenderwoche – verhindert, dass die
+     (jetzt streak-erhaltende) Rest-Day-Kategorie missbraucht wird, um die
+     Streak dauerhaft ohne echte Aktivität am Leben zu halten. */
+  function countRestdaysInWeek(dateISO) {
+    const ws = startOfWeek(fromISO(dateISO));
+    let count = 0;
+    for (let d = 0; d < 7; d++) {
+      const dayEntry = Storage.getEntry(toISO(addDays(ws, d)));
+      count += (dayEntry.activities || []).filter((a) => a.type === "restday").length;
+    }
+    return count;
+  }
+
   function bindEntryEditor(container, dateISO, onChange) {
     const goals = Storage.getSettings();
     const stepsInput = container.querySelector(".steps-input");
@@ -777,6 +850,25 @@
     container.querySelectorAll('[data-goto="challenge"]').forEach((b) => {
       b.addEventListener("click", () => switchTab("challenge"));
     });
+
+    container.querySelectorAll("[data-del-plan]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-plan");
+        Storage.deletePlan(dateISO, id);
+        onChange();
+      });
+    });
+    const planForm = container.querySelector(".add-plan-form");
+    if (planForm) {
+      planForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const planSportSelect = planForm.querySelector(".plan-sport-select");
+        const planNoteInput = planForm.querySelector(".plan-note-input");
+        Storage.addPlan(dateISO, { type: planSportSelect.value, note: planNoteInput.value.trim() });
+        showToast("Plan hinzugefügt");
+        onChange();
+      });
+    }
 
     const sportSelect = container.querySelector(".sport-select");
     const dynamicFields = container.querySelector(".dynamic-fields");
@@ -854,6 +946,16 @@
       ev.preventDefault();
       const type = sportSelect.value;
       const sport = SPORTS[type];
+
+      if (type === "restday") {
+        const existingActivity = editingId ? Storage.getEntry(dateISO).activities.find((a) => a.id === editingId) : null;
+        const addsNewRestday = !existingActivity || existingActivity.type !== "restday";
+        if (addsNewRestday && countRestdaysInWeek(dateISO) >= MAX_RESTDAYS_PER_WEEK) {
+          showToast(`Schon ${MAX_RESTDAYS_PER_WEEK} Rest-Days diese Woche eingetragen – mehr sind nicht vorgesehen 🙂`);
+          return;
+        }
+      }
+
       const activity = { id: editingId || genId(), type };
       if (sport.custom) {
         const nameInput = dynamicFields.querySelector('[data-field="customName"]');
@@ -2794,7 +2896,11 @@
 
   function computeStreaks() {
     const data = Storage.load();
-    const isActive = (e) => !!e && ((e.activities && e.activities.some((a) => a.type !== "restday")) || (e.steps && e.steps > 0));
+    // Für die Streak zählt jeder Tag mit irgendeinem Eintrag als "aktiv" –
+    // auch ein reiner Rest-Day (max. 2/Woche, siehe countRestdaysInWeek).
+    // Die Streak reißt also wirklich nur, wenn an einem Tag gar nichts
+    // eingetragen wurde.
+    const isActive = (e) => !!e && ((e.activities && e.activities.length > 0) || (e.steps && e.steps > 0));
     const activeDates = Object.keys(data.entries).filter((iso) => isActive(data.entries[iso])).sort();
     let longest = activeDates.length ? 1 : 0, run = 1;
     for (let i = 1; i < activeDates.length; i++) {
@@ -2802,8 +2908,17 @@
       run = diffDays === 1 ? run + 1 : 1;
       if (run > longest) longest = run;
     }
+    // Der heutige Tag ist noch nicht vorbei: Ist er noch leer, gilt das
+    // nicht als Bruch, sondern die Zählung startet einfach erst bei
+    // gestern. Erst ein bereits vergangener, leerer Tag reißt die Streak
+    // wirklich – und ein nachträglicher Eintrag für so einen Tag stellt
+    // sie automatisch wieder her, weil hier bei jedem Aufruf neu aus den
+    // gespeicherten Einträgen gerechnet wird (kein separater Zustand).
     let current = 0;
     let cursor = new Date();
+    if (!isActive(data.entries[toISO(cursor)])) {
+      cursor = addDays(cursor, -1);
+    }
     while (isActive(data.entries[toISO(cursor)])) {
       current++;
       cursor = addDays(cursor, -1);

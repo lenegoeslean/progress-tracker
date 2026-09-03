@@ -535,13 +535,59 @@ im Heute-Tab auf. Ein Klick auf "Danke, gelesen" blendet sie für den
 Tag aus; die Nachrichten selbst lassen sich jederzeit verwalten und
 löschen.
 
+## 33. Streak-Logik überarbeitet: Gnadenzeit für den heutigen Tag
+
+Die Streak (Giraffe, "Nachricht an dich selbst") reißt jetzt wirklich
+erst, wenn ein bereits **vergangener** Tag komplett ohne Eintrag
+geblieben ist – nicht mehr schon dann, wenn der heutige Tag noch
+einfach nicht befüllt ist. Solange heute noch offen ist, zählt die
+Streak einfach ab dem letzten Tag mit Eintrag weiter, ohne auf 0 zu
+springen.
+
+Da die Streak bei jedem Aufruf frisch aus den gespeicherten Tagen
+berechnet wird (es gibt keinen separat gespeicherten "gerissen"-Status),
+stellt ein **nachträglicher Eintrag** für einen verpassten Tag die
+Streak automatisch wieder her, sobald die Lücke geschlossen ist.
+
+Die bestehende **Streak-Freeze** (ein verpasster Wochenziel-Joker pro
+Monat, siehe Abschnitt 26) ist davon unabhängig – sie betrifft nur den
+separaten *Wochenziel*-Streak hinter dem "Zielstrebig"-Badge, nicht
+diese tägliche Aktivitäts-Streak. Für die tägliche Streak gilt jetzt
+bewusst eine strengere Regel: Sie verzeiht keine echten Lücken, sondern
+reißt nur nicht mehr fälschlich wegen eines noch nicht abgeschlossenen
+heutigen Tages.
+
+## 34. Active Recovery & Rest-Days zählen für die Streak
+
+Neue Sportart **🦥 Active Recovery** für lockere Bewegung, die kein
+richtiges Workout, aber auch keine echte Pause ist (z. B. entspannter
+Spaziergang, sanftes Dehnen).
+
+Außerdem zählt ein eingetragener **Rest-Day** jetzt selbst zur Streak
+dazu, statt sie zu unterbrechen – die Streak reißt wirklich nur noch,
+wenn an einem Tag *gar nichts* eingetragen wurde. Damit das nicht zum
+Schlupfloch wird, sind **maximal 2 Rest-Days pro Kalenderwoche**
+erlaubt; ein dritter wird beim Eintragen blockiert.
+
+## 35. Plan-Funktion
+
+Im Kalender- und im Heute-Tab gibt es jetzt einen Bereich "📅 Geplant",
+in dem du dir (auch für zukünftige Tage) vormerken kannst, was ansteht
+– z. B. "Joggen" mit einer Notiz wie "5 km, locker". Ein Plan ist rein
+informativ und wird **nicht automatisch** als Aktivität gewertet oder in
+deine Statistiken übernommen – dafür trägst du die Aktivität wie gewohnt
+im Abschnitt "Aktivitäten" ein, sobald sie wirklich stattgefunden hat.
+Steht für heute etwas im Plan, taucht das automatisch oben auf dem
+Heute-Tab auf ("Joggen ist geplant"). Pläne lassen sich jederzeit über
+das ✕ wieder entfernen.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
 
-- **Trainingsplan/Wiederholung** – wiederkehrende Aktivitäten (z. B. "jeden
-  Montag Krafttraining") als Vorlage anlegen, damit du sie nur noch
-  bestätigen statt komplett neu eintippen musst
+- **Wiederkehrende Pläne** – die Plan-Funktion (Abschnitt 35) deckt bisher
+  nur einzelne Tage ab; eine Vorlage wie "jeden Montag Krafttraining", die
+  sich automatisch für kommende Wochen einträgt, wäre der nächste Schritt
 - **Erinnerungen/Push-Benachrichtigungen** (auf iOS als installierte PWA
   aktuell technisch eingeschränkt, aber z. B. eine sanfte "heute noch
   nichts eingetragen"-Erinnerung beim App-Öffnen wäre schon ohne Push
