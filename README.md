@@ -496,7 +496,17 @@ echte Gewohnheiten wächst statt nur eine Statistik zu optimieren.
   wartend.
 - **6 Accessoires zum Freischalten**, gekoppelt an deine bestehenden
   Erfolge/Badges (Schleife, Sonnenbrille, Schal, Blume, Medaille, Hut) –
-  ausgegraut, solange sie noch nicht verdient sind.
+  ausgegraut in der Übersichtsleiste, solange sie noch nicht verdient
+  sind.
+- **Die Giraffe trägt ihre Belohnungen wirklich** (2026-09-03 ergänzt):
+  sobald ein Accessoire freigeschaltet ist, erscheint es direkt am
+  Giraffen-Bild selbst – die Schleife am Hals, die Sonnenbrille im
+  Gesicht, der Schal, die Blume am Ohr, die Medaille auf der Brust, der
+  Hut auf dem Kopf. Der Hut entfällt bei der "Stolzen Giraffe", weil dort
+  schon die Krone sitzt. Beim allerersten Freischalten eines Accessoires
+  gibt's zusätzlich einen kurzen Feier-Hinweis ("Deine Giraffe hat ein
+  neues Outfit bekommen: 🎀 …"). Die Giraffe selbst (Form, Wachstumsstufen,
+  Stimmung) bleibt unverändert.
 
 ## 30. Datenkunst-Generator
 

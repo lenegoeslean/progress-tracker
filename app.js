@@ -378,7 +378,8 @@
       return Object.assign({
         theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
         weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
-        targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS, chaosMode: true
+        targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS, chaosMode: true,
+        seenAccessoryKeys: []
       }, data.settings);
     },
     saveSettings(patch) {
@@ -1069,13 +1070,82 @@
     `;
   }
 
-  function buildCompanionSVG(stage, mood) {
+  /* Die freigeschalteten Erfolgs-Accessoires werden jetzt wirklich von der
+     Giraffe getragen statt nur als kleine Chip-Liste daneben zu stehen.
+     Zwei Koordinatensätze (Baby- vs. normale Proportionen), analog zu den
+     Flecken oben. Der Hut entfällt, sobald ohnehin schon die Krone der
+     "Stolzen Giraffe" sitzt (beides am Kopf, würde sich sonst überlagern –
+     die Krone gewinnt als höchste Stufe). */
+  function buildCompanionAccessoriesSVG(accessories, isBaby, hasCrown) {
+    const earned = {};
+    accessories.forEach((a) => { earned[a.key] = a.earned; });
+    let body = "";
+    let face = "";
+
+    if (isBaby) {
+      if (earned.flower) {
+        body += `<g transform="translate(66 84)">
+          <circle cx="0" cy="-5" r="3.4" fill="#FF9FC9"/>
+          <circle cx="4.7" cy="-1.5" r="3.4" fill="#FF9FC9"/>
+          <circle cx="3.1" cy="4.2" r="3.4" fill="#FF9FC9"/>
+          <circle cx="-3.1" cy="4.2" r="3.4" fill="#FF9FC9"/>
+          <circle cx="-4.7" cy="-1.5" r="3.4" fill="#FF9FC9"/>
+          <circle cx="0" cy="0" r="3" fill="#F2C94C"/>
+        </g>`;
+      }
+      if (!hasCrown && earned.hat) {
+        body += `<g><rect x="88" y="58" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="70" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="66" width="24" height="3" fill="#B5495A"/></g>`;
+      }
+      if (earned.bandana) {
+        body += `<g><path d="M100,112 L86,104 L86,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,112 L114,104 L114,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="112" r="4.5" fill="#E23E76"/></g>`;
+      }
+      if (earned.scarf) {
+        body += `<g fill="#8C4FC9"><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z"/><path d="M92,148 L89,178 L96,178 L98,150 Z"/><path d="M108,148 L111,174 L104,174 L102,150 Z"/></g>`;
+      }
+      if (earned.medal) {
+        body += `<g><path d="M94,164 L100,180 L106,164" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="185" r="7.5" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="185" r="3.7" fill="#FFF6D9"/></g>`;
+      }
+      if (earned.sunglasses) {
+        face += `<g><rect x="85" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="102" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/><line x1="83" y1="99.5" x2="85" y2="101" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="115" y1="101" x2="117" y2="99.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="86" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+      }
+    } else {
+      if (earned.flower) {
+        body += `<g transform="translate(70 28)">
+          <circle cx="0" cy="-5" r="3.2" fill="#FF9FC9"/>
+          <circle cx="4.5" cy="-1.5" r="3.2" fill="#FF9FC9"/>
+          <circle cx="3" cy="4" r="3.2" fill="#FF9FC9"/>
+          <circle cx="-3" cy="4" r="3.2" fill="#FF9FC9"/>
+          <circle cx="-4.5" cy="-1.5" r="3.2" fill="#FF9FC9"/>
+          <circle cx="0" cy="0" r="2.8" fill="#F2C94C"/>
+        </g>`;
+      }
+      if (!hasCrown && earned.hat) {
+        body += `<g><rect x="88" y="2" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="14" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="10" width="24" height="3" fill="#B5495A"/></g>`;
+      }
+      if (earned.bandana) {
+        body += `<g><path d="M100,56 L88,49 L88,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,56 L112,49 L112,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="56" r="4" fill="#E23E76"/></g>`;
+      }
+      if (earned.scarf) {
+        body += `<g fill="#8C4FC9"><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z"/><path d="M90,108 L86,146 L94,146 L96,110 Z"/><path d="M110,108 L114,140 L106,140 L104,110 Z"/></g>`;
+      }
+      if (earned.medal) {
+        body += `<g><path d="M94,140 L100,158 L106,140" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="163" r="8" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="163" r="4" fill="#FFF6D9"/></g>`;
+      }
+      if (earned.sunglasses) {
+        face += `<g><rect x="86" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="102" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="98" y="43.5" width="4" height="2.4" fill="#2B2B2B"/><line x1="84" y1="44" x2="86" y2="45.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="114" y1="45.5" x2="116" y2="44" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="87" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+      }
+    }
+    return { body, face };
+  }
+
+  function buildCompanionSVG(stage, mood, accessories) {
     const isBaby = stage.key === "baby";
     const bodyColor = "#F6D9A6", darkColor = "#E0B679", spotColor = "#C97A3B", muzzleColor = "#FBEAD0";
     const spots = (isBaby ? COMPANION_SPOT_POSITIONS_BABY : COMPANION_SPOT_POSITIONS_NORMAL)
       .slice(0, stage.spots)
       .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="5" fill="${spotColor}" opacity="0.85"/>`)
       .join("");
+    const acc = buildCompanionAccessoriesSVG(accessories || [], isBaby, !!stage.crown);
 
     if (isBaby) {
       return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
@@ -1096,7 +1166,9 @@
         <ellipse cx="100" cy="106" rx="12" ry="8" fill="${muzzleColor}"/>
         ${spots}
         ${stage.crown ? `<path d="M84,60 L90,44 L100,56 L110,44 L116,60 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+        ${acc.body}
         ${buildCompanionFaceSVG(100, 100, mood, 1.05)}
+        ${acc.face}
       </svg>`;
     }
 
@@ -1118,13 +1190,32 @@
       <ellipse cx="100" cy="49" rx="10" ry="7" fill="${muzzleColor}"/>
       ${spots}
       ${stage.crown ? `<path d="M83,8 L90,-8 L100,4 L110,-8 L117,8 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      ${acc.body}
       ${buildCompanionFaceSVG(100, 44, mood, 1)}
+      ${acc.face}
     </svg>`;
   }
 
-  function buildCompanionHTML() {
-    const state = computeCompanionState();
-    const svg = buildCompanionSVG(state.stage, state.mood);
+  /* Feiert neu freigeschaltete Accessoires einmalig per Toast, statt sie
+     nur still im Bild auftauchen zu lassen – merkt sich dafür, welche
+     Accessoires schon "gesehen" wurden. */
+  function checkCompanionAccessoryUnlocks(state) {
+    const settings = Storage.getSettings();
+    const seen = settings.seenAccessoryKeys || [];
+    const earnedNow = state.accessories.filter((a) => a.earned).map((a) => a.key);
+    const newlyEarned = state.accessories.filter((a) => a.earned && !seen.includes(a.key));
+    if (newlyEarned.length) {
+      const names = newlyEarned.map((a) => `${a.emoji} ${a.title}`).join(", ");
+      showToast(`Deine Giraffe hat ein neues Outfit bekommen: ${names}! 🎉`);
+    }
+    if (newlyEarned.length || seen.length !== earnedNow.length) {
+      Storage.saveSettings({ seenAccessoryKeys: earnedNow });
+    }
+  }
+
+  function buildCompanionHTML(precomputedState) {
+    const state = precomputedState || computeCompanionState();
+    const svg = buildCompanionSVG(state.stage, state.mood, state.accessories);
     const moodText = state.mood === "happy"
       ? "Sie freut sich – du warst heute schon aktiv! 🎉"
       : state.mood === "sad"
@@ -1236,16 +1327,18 @@
     const hour = today.getHours();
     const greeting = hour < 11 ? "Guten Morgen ☀️" : hour < 18 ? "Schön, dass du da bist 👋" : "Guten Abend 🌙";
     const chaos = getChaosChallengeForDate(dateISO);
+    const companionState = computeCompanionState();
     container.innerHTML = `
       <div class="hero-card">
         <div class="hero-greeting">${greeting}</div>
         <div class="hero-date">${formatWeekdayDate(today)}</div>
       </div>
-      ${buildCompanionHTML()}
+      ${buildCompanionHTML(companionState)}
       ${chaos ? buildChaosCardHTML(dateISO, chaos) : ""}
       ${buildSelfMessageCardHTML(dateISO)}
       <div id="heuteEditor"></div>
     `;
+    checkCompanionAccessoryUnlocks(companionState);
     if (chaos) {
       const chaosCheck = document.getElementById("chaosCheck");
       if (chaosCheck) {
