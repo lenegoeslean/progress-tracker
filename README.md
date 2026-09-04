@@ -494,18 +494,22 @@ echte Gewohnheiten wächst statt nur eine Statistik zu optimieren.
 - **Stimmung**: traurig, wenn deine aktuelle Streak gerissen ist,
   fröhlich, wenn du heute schon etwas eingetragen hast, sonst neutral
   wartend.
-- **18 Accessoires in 6 Kategorien zum Freischalten** (siehe Abschnitt 36
-  für die ausführliche Garderobe), gekoppelt an echte, ohnehin berechnete
-  Werte wie Streak-Rekord oder aktive Tage – ausgegraut/gesperrt, solange
-  sie noch nicht verdient sind.
+- **21 Accessoires in 7 Kategorien zum Freischalten** (siehe Abschnitt 36
+  für die ausführliche Garderobe, Abschnitt 37 für die neueste Kategorie),
+  gekoppelt an echte, ohnehin berechnete Werte wie Streak-Rekord oder
+  aktive Tage – ausgegraut/gesperrt, solange sie noch nicht verdient sind.
 - **Die Giraffe trägt ihre Belohnungen wirklich**: sobald ein Accessoire
   freigeschaltet ist, erscheint es direkt am Giraffen-Bild selbst –
   Kopfschmuck, Halsschmuck (oben und als Schal), Brille, Blume am Ohr,
   Medaille auf der Brust. Kopfschmuck entfällt bei der "Stolzen Giraffe",
   weil dort schon die Krone sitzt. Beim allerersten Freischalten eines
-  Accessoires gibt's zusätzlich einen kurzen Feier-Hinweis ("Deine Giraffe
-  hat ein neues Outfit bekommen: 🎀 …"). Die Giraffe selbst (Form,
+  Accessoires gibt's zusätzlich einen kurzen Feier-Hinweis ("Giraffi hat
+  ein neues Outfit bekommen: 🎀 …"). Die Giraffe selbst (Form,
   Wachstumsstufen, Stimmung) bleibt unverändert.
+- **Sie hat jetzt einen Namen: Giraffi.** Er steht direkt über der
+  Wachstumsstufe im Heute-Tab und wird in allen Texten der App
+  verwendet (Feier-Hinweise, Garderobe-Button, Quests, Wochenbrief,
+  Meine Reise).
 
 ## 30. Datenkunst-Generator
 
@@ -615,7 +619,8 @@ das ✕ wieder entfernen.
 Die Giraffen-Accessoires (Abschnitt 29) wurden deutlich ausgebaut:
 
 - **6 Kategorien ("Slots")**, jede mit **3 Stufen** – insgesamt 18
-  Accessoires statt vorher 6:
+  Accessoires statt vorher 6 (eine 7. Kategorie kam mit dem Quest-System
+  in Abschnitt 37 dazu, siehe dort):
   - **Blume am Ohr**: Blüte 🌸 → Kleeblatt 🍀 → Schmetterling 🦋
     (perfekte Challenge-Wochen)
   - **Kopfschmuck**: Käppi 🧢 → Zylinder 🎩 → Partyhut 🎉
@@ -641,8 +646,73 @@ Die Giraffen-Accessoires (Abschnitt 29) wurden deutlich ausgebaut:
     einstellen musst.
   - Deine Auswahl wird gespeichert und bleibt auch nach dem
     Schließen/Neuladen der App erhalten.
-- Der Feier-Hinweis beim ersten Freischalten funktioniert für alle 18
+- Der Feier-Hinweis beim ersten Freischalten funktioniert für alle
   Accessoires, unabhängig davon, was gerade ausgestattet ist.
+
+## 37. Quest-System für Giraffi
+
+Im Heute-Tab, direkt unter Giraffi, taucht jetzt eine wöchentliche
+Quest-Karte auf: 3 kleine Herausforderungen für die laufende Woche, mit
+Fortschrittsbalken und XP-Belohnung.
+
+- **9 mögliche Quests**, aus denen jede Woche automatisch 3 ausgewählt
+  werden (deterministisch aus der Kalenderwoche berechnet – dieselbe
+  Woche zeigt bei jedem Öffnen dieselben 3 Quests, andere Wochen zeigen
+  andere): 3× Sport, 20.000 Schritte, 5× Wasserziel, 2 verschiedene
+  Sportarten, 3× Liegestütze-Ziel, 3× Plank-Ziel, 150 Minuten Bewegung
+  insgesamt, 3× Stretching, oder die ganze Woche durchgehend aktiv
+  (7/7).
+- Jede Quest bringt bei Erfüllung **15–30 XP**. Die Summe aller jemals
+  gesammelten Quest-XP wird direkt auf der Karte angezeigt und läuft
+  über alle Wochen seit deinem ersten Eintrag mit.
+- **Neue, 7. Garderobe-Kategorie: Quest-Abzeichen** – ein kleiner Stern
+  an Giraffis Schulter, mit 3 Stufen: Bronze 🔰 (ab 40 XP), Silber 🎗️
+  (ab 120 XP), Gold 🏵️ (ab 300 XP). Wie alle anderen Accessoires frei
+  wählbar über "🎨 Giraffi ausstatten".
+- Alles wird live aus deinen ohnehin vorhandenen Einträgen berechnet –
+  es gibt keine zusätzliche Sport-Anmeldung oder Extra-Eingabe, die
+  Quests laufen einfach im Hintergrund mit.
+
+## 38. Automatischer Wochenbrief
+
+Oben im Trends-Tab schreibt dir die App jetzt jede Woche einen kurzen,
+persönlichen Rückblick in Fließtext statt nur in Zahlen – ein "Brief"
+von Giraffi, der zusammenfasst, was diese Woche bisher passiert ist:
+wie viele Tage du aktiv warst, welche Sportart am häufigsten dran war,
+wie viele Schritte/Minuten zusammengekommen sind, wie sich dein
+Trendgewicht seit letzter Woche verändert hat, wie deine aktuelle
+Serie steht, wie viele der Wochen-Quests du geschafft hast und auf
+welcher Wachstumsstufe Giraffi gerade steht. Der Text passt sich
+automatisch an, welcher Wochentag gerade ist (z. B. an einem Dienstag
+werden nur die bisherigen 2 Tage der Woche bewertet, nicht die ganze
+Woche) und lässt Abschnitte weg, für die noch keine Daten da sind
+(z. B. Gewicht, wenn du noch keine zwei Einträge hast).
+
+## 39. "Meine Reise" – neuer Zeitleisten-Tab
+
+Ein neuer Tab (🧭 Reise) zeigt deine gesamte Geschichte mit der App als
+eine einzige chronologische Zeitleiste, neueste Ereignisse zuerst –
+alles an einem Ort, wofür du bisher zwischen Fotos-, Gewicht- und
+Trends-Tab hin- und herspringen musstest:
+
+- **Progress-Fotos** direkt als Vorschaubild (Antippen öffnet die
+  Vollansicht wie im Fotos-Tab).
+- **Gewichtsmeilensteine** – jeder Eintrag mit Veränderung zum
+  vorherigen.
+- **Giraffis Wachstumsstufen** – der Tag, an dem Giraffi jede neue
+  Stufe erreicht hat (Junge/Erwachsene/Stolze Giraffe).
+- **Streak-Rekorde** – der Tag, an dem erstmals eine 7-Tage- bzw.
+  30-Tage-Serie erreicht wurde.
+- **Trainings-Meilensteine** – die 50., 100. und 250. geloggte
+  Trainingseinheit.
+- **Perfekte Challenge-Wochen** – die 1., 3. und 6. Woche mit
+  vollständig erfüllter Wochen-Challenge.
+- **Quest-Abzeichen** – der Zeitpunkt, zu dem Bronze-, Silber- und
+  Gold-Abzeichen freigeschaltet wurden.
+
+Auch hier: alles wird live aus den bereits vorhandenen Daten
+berechnet, es wird nichts zusätzlich gespeichert – die Zeitleiste
+füllt sich einfach von selbst, je mehr du die App nutzt.
 
 ## Mögliche nächste Schritte
 

@@ -219,6 +219,16 @@
     const { year, week } = getISOWeek(date);
     return `${year}-W${String(week).padStart(2, "0")}`;
   }
+  /* Umkehrung von weekKey(): liefert den Montag der angegebenen ISO-Woche
+     ("2026-W36" -> Datum). Nur für die Reise-Zeitleiste gebraucht, wo aus
+     einer gespeicherten Wochen-ID wieder ein anzeigbares Datum werden muss. */
+  function dateFromWeekKey(wKey) {
+    const [yearStr, weekStr] = wKey.split("-W");
+    const year = parseInt(yearStr, 10);
+    const week = parseInt(weekStr, 10);
+    const jan4Monday = startOfWeek(new Date(year, 0, 4));
+    return addDays(jan4Monday, (week - 1) * 7);
+  }
   function formatWeekdayDate(date) {
     return `${WEEKDAYS_LONG[date.getDay()]}, ${date.getDate()}. ${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`;
   }
@@ -1037,6 +1047,8 @@
   /* Daten abgeleitet, keine eigene Speicherung nötig.                  */
   /* ---------------------------------------------------------------- */
 
+  const COMPANION_NAME = "Giraffi";
+
   const COMPANION_STAGES = [
     { min: 0, key: "baby", label: "Baby-Giraffe", size: 118, spots: 3 },
     { min: 7, key: "young", label: "Junge Giraffe", size: 140, spots: 5 },
@@ -1097,8 +1109,165 @@
         { key: "gold", emoji: "🏅", title: "Gold-Medaille", tier: 2, threshold: 100 },
         { key: "trophy", emoji: "🏆", title: "Pokal", tier: 3, threshold: 250 }
       ]
+    },
+    {
+      key: "abzeichen", label: "Quest-Abzeichen", stat: "questXP", statLabel: "gesammelte Quest-XP",
+      items: [
+        { key: "bronze_badge", emoji: "🔰", title: "Bronze-Abzeichen", tier: 1, threshold: 40 },
+        { key: "silver_badge", emoji: "🎗️", title: "Silber-Abzeichen", tier: 2, threshold: 120 },
+        { key: "gold_badge", emoji: "🏵️", title: "Gold-Abzeichen", tier: 3, threshold: 300 }
+      ]
     }
   ];
+
+  /* ---------------------------------------------------------------- */
+  /* Giraffis Quests der Woche                                          */
+  /* Jede Woche wählt Giraffi (deterministisch je Kalenderwoche, wie     */
+  /* der Chaos-Modus) 3 von mehreren möglichen Quests aus. Sie geben     */
+  /* XP, die – über alle Wochen mit Daten aufsummiert – die              */
+  /* Quest-Abzeichen in der Garderobe freischalten. Alles wird live aus  */
+  /* den vorhandenen Einträgen berechnet, nichts wird separat            */
+  /* gespeichert – identisch zum Prinzip von Streaks/Badges.             */
+  /* ---------------------------------------------------------------- */
+
+  const QUEST_TEMPLATES = [
+    {
+      key: "sessions3", icon: "💪", title: "3x Sport diese Woche", xp: 20,
+      evaluate: (weekStart, agg) => ({ progress: Math.min(agg.sessionsCount, 3), target: 3, done: agg.sessionsCount >= 3 })
+    },
+    {
+      key: "steps20k", icon: "👟", title: "20.000 Schritte diese Woche", xp: 20,
+      evaluate: (weekStart, agg) => ({ progress: Math.min(agg.steps, 20000), target: 20000, done: agg.steps >= 20000 })
+    },
+    {
+      key: "water5", icon: "💧", title: "5 Tage Wasserziel erreicht", xp: 15,
+      evaluate: (weekStart, agg, days, goals) => {
+        const c = days.filter((e) => (e.water || 0) >= goals.waterGoalMl).length;
+        return { progress: Math.min(c, 5), target: 5, done: c >= 5 };
+      }
+    },
+    {
+      key: "variety2", icon: "🎲", title: "2 verschiedene Sportarten ausprobieren", xp: 15,
+      evaluate: (weekStart, agg) => {
+        const types = Object.keys(agg.byType).filter((t) => t !== "restday");
+        return { progress: Math.min(types.length, 2), target: 2, done: types.length >= 2 };
+      }
+    },
+    {
+      key: "pushup3", icon: "🏋️", title: "3x Liegestütze-Ziel erreicht", xp: 15,
+      evaluate: (weekStart, agg, days, goals) => {
+        const c = days.filter((e) => (e.pushups || 0) >= goals.pushupsGoal).length;
+        return { progress: Math.min(c, 3), target: 3, done: c >= 3 };
+      }
+    },
+    {
+      key: "plank3", icon: "🧍", title: "3x Plank-Ziel erreicht", xp: 15,
+      evaluate: (weekStart, agg, days, goals) => {
+        const c = days.filter((e) => (e.plankSeconds || 0) >= goals.plankGoalSeconds).length;
+        return { progress: Math.min(c, 3), target: 3, done: c >= 3 };
+      }
+    },
+    {
+      key: "minutes150", icon: "⏱️", title: "150 Minuten Bewegung insgesamt", xp: 20,
+      evaluate: (weekStart, agg) => ({ progress: Math.min(agg.minutes, 150), target: 150, done: agg.minutes >= 150 })
+    },
+    {
+      key: "stretch3", icon: "🧘", title: "3x Stretching gemacht", xp: 15,
+      evaluate: (weekStart, agg, days) => {
+        const c = days.filter((e) => e.stretchingDone).length;
+        return { progress: Math.min(c, 3), target: 3, done: c >= 3 };
+      }
+    },
+    {
+      key: "fullweek", icon: "🌟", title: "Jeden Tag der Woche aktiv (7/7)", xp: 30,
+      evaluate: (weekStart, agg, days) => {
+        const c = days.filter((e) => (e.activities && e.activities.length > 0) || (e.steps && e.steps > 0)).length;
+        return { progress: Math.min(c, 7), target: 7, done: c >= 7 };
+      }
+    }
+  ];
+
+  function getWeekDayEntries(weekStart) {
+    return Array.from({ length: 7 }, (_, i) => Storage.getEntry(toISO(addDays(weekStart, i))));
+  }
+
+  /* Wählt deterministisch 3 Quests für eine gegebene Woche – abgeleitet
+     aus der Kalenderwoche selbst (wie bei den Chaos-Challenges), damit
+     dieselbe Woche immer dieselben 3 Quests zeigt, verschiedene Wochen
+     aber unterschiedliche. */
+  function getQuestsForWeek(weekStart) {
+    const wKey = weekKey(weekStart);
+    return QUEST_TEMPLATES
+      .map((q) => ({ q, sort: hashString(`quest-${wKey}-${q.key}`) }))
+      .sort((a, b) => a.sort - b.sort)
+      .slice(0, 3)
+      .map((s) => s.q);
+  }
+
+  /* Summiert die XP aller abgeschlossenen Quests über alle Wochen seit
+     dem allerersten Eintrag bis einschließlich der übergebenen Woche –
+     rein aus den Daten abgeleitet, keine gespeicherte Gesamtsumme. */
+  function computeQuestXPTotal(uptoWeekStart) {
+    const data = Storage.load();
+    const entryDates = Object.keys(data.entries);
+    if (!entryDates.length) return 0;
+    const earliest = entryDates.reduce((min, iso) => (iso < min ? iso : min), entryDates[0]);
+    let cursor = startOfWeek(fromISO(earliest));
+    const goals = Storage.getSettings();
+    let total = 0;
+    let guard = 0;
+    while (cursor <= uptoWeekStart && guard < 300) {
+      const quests = getQuestsForWeek(cursor);
+      const agg = weekAggregate(cursor);
+      const days = getWeekDayEntries(cursor);
+      quests.forEach((q) => {
+        if (q.evaluate(cursor, agg, days, goals).done) total += q.xp;
+      });
+      cursor = addDays(cursor, 7);
+      guard++;
+    }
+    return total;
+  }
+
+  function formatQuestProgress(r) {
+    const fmt = (n) => Math.round(n).toLocaleString("de-DE");
+    return r.done ? "Erledigt!" : `${fmt(r.progress)} / ${fmt(r.target)}`;
+  }
+
+  function buildQuestCardHTML() {
+    const weekStart = startOfWeek(new Date());
+    const quests = getQuestsForWeek(weekStart);
+    const agg = weekAggregate(weekStart);
+    const days = getWeekDayEntries(weekStart);
+    const goals = Storage.getSettings();
+    const totalXP = computeQuestXPTotal(weekStart);
+
+    const rows = quests.map((q) => {
+      const r = q.evaluate(weekStart, agg, days, goals);
+      const pct = Math.min(100, Math.round((r.progress / r.target) * 100));
+      return `
+        <div class="quest-item${r.done ? " done" : ""}">
+          <div class="quest-icon">${r.done ? "✅" : q.icon}</div>
+          <div class="quest-body">
+            <div class="quest-title">${esc(q.title)}</div>
+            <div class="progress-bar-lg" style="margin:6px 0 2px;"><div class="fill" style="width:${pct}%"></div></div>
+            <div class="small muted quest-progress-label">${formatQuestProgress(r)} · +${q.xp} XP</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <h2 class="section-title">🎯 ${esc(COMPANION_NAME)}s Quests der Woche</h2>
+      <div class="card quest-card">
+        <div class="quest-list">${rows}</div>
+        <div class="row-between small muted quest-xp-total" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+          <span>Gesammelte Quest-XP</span>
+          <strong>${totalXP.toLocaleString("de-DE")} XP</strong>
+        </div>
+      </div>
+    `;
+  }
 
   /* Merkt sich, ob die Ausstatten-Ansicht gerade offen ist (rein visueller
      UI-Zustand, kein gespeicherter Wert – soll nur Re-Renders innerhalb
@@ -1110,12 +1279,14 @@
     const weeklyStreak = computeWeeklyGoalStreak();
     const chAll = computeChallengeHistory({ limit: 1000 });
     const totalWorkouts = getAllActivitiesFlat().filter((a) => a.type !== "restday").length;
+    const questXP = computeQuestXPTotal(startOfWeek(new Date()));
     return {
       totalActiveDays: streaks.totalActiveDays,
       longestStreak: streaks.longest,
       weeklyGoalStreak: weeklyStreak.streak,
       perfectWeeks: chAll.perfectWeeks,
-      totalWorkouts: totalWorkouts
+      totalWorkouts: totalWorkouts,
+      questXP: questXP
     };
   }
 
@@ -1204,6 +1375,17 @@
     `;
   }
 
+  /* Kleiner 5-zackiger Stern als SVG-Polygon, für das Quest-Abzeichen. */
+  function starSVG(cx, cy, r, fill, stroke) {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const angle = (Math.PI / 5) * i - Math.PI / 2;
+      const radius = i % 2 === 0 ? r : r * 0.45;
+      pts.push(`${(cx + radius * Math.cos(angle)).toFixed(1)},${(cy + radius * Math.sin(angle)).toFixed(1)}`);
+    }
+    return `<polygon points="${pts.join(" ")}" fill="${fill}" stroke="${stroke}" stroke-width="0.6"/>`;
+  }
+
   /* Die freigeschalteten Erfolgs-Accessoires werden wirklich von der
      Giraffe getragen statt nur als kleine Chip-Liste daneben zu stehen.
      Jeder Slot kann eine von mehreren Stufen tragen (siehe COMPANION_SLOTS)
@@ -1216,7 +1398,8 @@
     let body = "";
     let face = "";
     const ohr = equipped.ohr, kopf = equipped.kopf, bandana = equipped.bandana,
-      brille = equipped.brille, schal = equipped.schal, medaille = equipped.medaille;
+      brille = equipped.brille, schal = equipped.schal, medaille = equipped.medaille,
+      abzeichen = equipped.abzeichen;
 
     // --- Ohr: Blüte / Kleeblatt / Schmetterling -----------------------
     if (ohr) {
@@ -1299,6 +1482,14 @@
         else if (medaille.key === "gold") body += `<g><path d="M94,140 L100,158 L106,140" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="163" r="8" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="163" r="4" fill="#FFF6D9"/></g>`;
         else if (medaille.key === "trophy") body += `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,140 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="152" width="6" height="6"/><rect x="92" y="158" width="16" height="4" rx="1.5"/><path d="M92,142 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,142 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
       }
+    }
+
+    // --- Quest-Abzeichen: Bronze/Silber/Gold-Stern an der Schulter ------
+    if (abzeichen) {
+      const [ax, ay] = isBaby ? [74, 120] : [74, 64];
+      const colors = { bronze_badge: ["#C97A4C", "#A5613A"], silver_badge: ["#C7CDD6", "#9AA3AF"], gold_badge: ["#F2C94C", "#D9A824"] };
+      const [fill, stroke] = colors[abzeichen.key] || colors.bronze_badge;
+      body += `<g>${starSVG(ax, ay, isBaby ? 5.5 : 5, fill, stroke)}</g>`;
     }
 
     // --- Brille: Sonnenbrille / Herzbrille / Sternbrille (auf dem Gesicht) --
@@ -1387,7 +1578,7 @@
     const newlyEarned = allItems.filter((it) => it.earned && !seen.includes(it.key));
     if (newlyEarned.length) {
       const names = newlyEarned.map((it) => `${it.emoji} ${it.title}`).join(", ");
-      showToast(`Deine Giraffe hat ein neues Outfit bekommen: ${names}! 🎉`);
+      showToast(`${COMPANION_NAME} hat ein neues Outfit bekommen: ${names}! 🎉`);
     }
     if (newlyEarned.length || seen.length !== earnedNow.length) {
       Storage.saveSettings({ seenAccessoryKeys: earnedNow });
@@ -1398,10 +1589,10 @@
     const state = precomputedState || computeCompanionState();
     const svg = buildCompanionSVG(state.stage, state.mood, state.equipped);
     const moodText = state.mood === "happy"
-      ? "Sie freut sich – du warst heute schon aktiv! 🎉"
+      ? `${COMPANION_NAME} freut sich – du warst heute schon aktiv! 🎉`
       : state.mood === "sad"
         ? "Deine Streak ist gerissen – ein kleiner Schritt heute baut sie wieder auf."
-        : "Sie wartet gespannt auf deine erste Aktivität heute.";
+        : `${COMPANION_NAME} wartet gespannt auf deine erste Aktivität heute.`;
     const nextText = state.next
       ? `Noch ${state.next.min - state.totalActiveDays} aktive Tage bis „${state.next.label}"`
       : "Höchste Stufe erreicht – mehr geht nicht mehr! 🏆";
@@ -1448,15 +1639,16 @@
         <div class="companion-row">
           <div class="companion-svg-wrap">${svg}</div>
           <div class="companion-info">
+            <div class="companion-name">${esc(COMPANION_NAME)}</div>
             <div class="companion-stage">${esc(state.stage.label)}</div>
             <div class="small muted">${esc(nextText)}</div>
             <div class="companion-mood">${esc(moodText)}</div>
           </div>
         </div>
         <div class="companion-accessories">${wornHTML}</div>
-        <button type="button" class="companion-wardrobe-toggle" id="companionWardrobeToggle">🎨 Giraffe ausstatten${companionWardrobeOpen ? " ▲" : " ▼"}</button>
+        <button type="button" class="companion-wardrobe-toggle" id="companionWardrobeToggle">🎨 ${esc(COMPANION_NAME)} ausstatten${companionWardrobeOpen ? " ▲" : " ▼"}</button>
         <div class="companion-wardrobe" id="companionWardrobe" ${companionWardrobeOpen ? "" : "hidden"}>
-          <div class="small muted companion-wardrobe-hint">Wähle pro Kategorie, was deine Giraffe tragen soll – nur Freigeschaltetes ist wählbar.</div>
+          <div class="small muted companion-wardrobe-hint">Wähle pro Kategorie, was ${esc(COMPANION_NAME)} tragen soll – nur Freigeschaltetes ist wählbar.</div>
           ${wardrobeHTML}
           <button type="button" class="btn btn-ghost btn-sm btn-block companion-wardrobe-close" id="companionWardrobeClose">Fertig – Garderobe schließen ✕</button>
         </div>
@@ -1583,6 +1775,7 @@
         <div class="hero-date">${formatWeekdayDate(today)}</div>
       </div>
       ${buildCompanionHTML(companionState)}
+      ${buildQuestCardHTML()}
       ${chaos ? buildChaosCardHTML(dateISO, chaos) : ""}
       ${buildSelfMessageCardHTML(dateISO)}
       <div id="heuteEditor"></div>
@@ -3480,6 +3673,223 @@
     }, "image/png");
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Wochenbrief                                                        */
+  /* Statt einzelner Zahlen ein zusammenhängender, in Worten            */
+  /* geschriebener Rückblick auf die laufende Woche – verbindet         */
+  /* Aktivität, Gewichtstrend, Streak und Giraffis Quests zu einer      */
+  /* kleinen Geschichte statt eines Dashboards.                         */
+  /* ---------------------------------------------------------------- */
+
+  function computeWochenbrief() {
+    const weekStart = startOfWeek(new Date());
+    const today = new Date();
+    const daysElapsed = Math.min(7, Math.floor((today - weekStart) / 86400000) + 1);
+    const days = getWeekDayEntries(weekStart).slice(0, daysElapsed);
+    const activeDays = days.filter((e) => (e.activities && e.activities.length > 0) || (e.steps && e.steps > 0)).length;
+    const agg = weekAggregate(weekStart);
+
+    const sportCounts = Object.keys(agg.byType).filter((k) => k !== "restday").map((k) => ({ key: k, count: agg.byType[k].count }));
+    sportCounts.sort((a, b) => b.count - a.count);
+    const topSport = sportCounts.length ? { sport: SPORTS[sportCounts[0].key] || SPORTS.custom, count: sportCounts[0].count } : null;
+
+    const data = Storage.load();
+    const weights = (data.weights || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    let weightText = null;
+    if (weights.length >= 2) {
+      const trend = computeWeightTrend(weights, 14);
+      const latest = trend[trend.length - 1];
+      const weekAgoISO = toISO(addDays(fromISO(latest.date), -7));
+      const refCandidates = trend.filter((p) => p.date <= weekAgoISO);
+      if (refCandidates.length) {
+        const ref = refCandidates[refCandidates.length - 1];
+        const delta = latest.value - ref.value;
+        weightText = Math.abs(delta) < 0.3
+          ? `Dein Trendgewicht ist stabil geblieben (${latest.value.toFixed(1)} kg) – ganz normal, das gehört dazu.`
+          : `Dein Trendgewicht liegt jetzt bei ${latest.value.toFixed(1)} kg (${delta > 0 ? "+" : ""}${delta.toFixed(1)} kg zur Vorwoche).`;
+      }
+    }
+
+    const streaks = computeStreaks();
+    const streakText = streaks.current > 0
+      ? `Deine aktuelle Serie steht bei ${streaks.current} ${streaks.current === 1 ? "Tag" : "Tagen"}.`
+      : "Deine Serie ist gerade bei 0 – ein kleiner Schritt heute baut sie wieder auf.";
+
+    const quests = getQuestsForWeek(weekStart);
+    const goals = Storage.getSettings();
+    const questDone = quests.filter((q) => q.evaluate(weekStart, agg, days.length === 7 ? days : getWeekDayEntries(weekStart), goals).done).length;
+
+    const companionState = computeCompanionState();
+
+    return { weekStart, daysElapsed, activeDays, topSport, stepsTotal: agg.steps, minutes: agg.minutes, weightText, streakText, quests, questDone, stage: companionState.stage };
+  }
+
+  function buildWochenbriefHTML() {
+    const w = computeWochenbrief();
+    const fmt = (n) => n.toLocaleString("de-DE");
+    const parts = [];
+    parts.push(`Diese Woche warst du an ${w.activeDays} von ${w.daysElapsed} bisherigen ${w.daysElapsed === 1 ? "Tag" : "Tagen"} aktiv.`);
+    if (w.topSport) parts.push(`Am häufigsten stand ${w.topSport.sport.label} auf dem Programm (${w.topSport.count}×).`);
+    if (w.stepsTotal > 0) parts.push(`Insgesamt bist du ${fmt(w.stepsTotal)} Schritte gelaufen${w.minutes > 0 ? ` und warst ${w.minutes} Minuten aktiv` : ""}.`);
+    if (w.weightText) parts.push(w.weightText);
+    parts.push(w.streakText);
+    parts.push(`Von ${COMPANION_NAME}s ${w.quests.length} Quests dieser Woche hast du ${w.questDone} geschafft.`);
+    parts.push(`${COMPANION_NAME} ist aktuell „${w.stage.label}".`);
+
+    return `
+      <h2 class="section-title" style="margin-top:0;">✉️ Dein Wochenbrief</h2>
+      <div class="card wochenbrief-card">
+        <div class="wochenbrief-text">${parts.map((p) => esc(p)).join(" ")}</div>
+      </div>
+    `;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Tab: Meine Reise                                                    */
+  /* Eine chronologische Zeitleiste aus Fotos, Gewichtsmeilensteinen,    */
+  /* Giraffis Wachstumsstufen und Erfolgen – wie ein Tagebuch der        */
+  /* ganzen Reise statt verteilter Einzelstatistiken. Alles wird aus     */
+  /* vorhandenen Daten abgeleitet (bei Streak-/Trainings-/Perfekte-      */
+  /* Woche-Meilensteinen wird das jeweils ERSTE Erreichen rückwirkend    */
+  /* aus den Einträgen ermittelt), nichts wird separat gespeichert.      */
+  /* ---------------------------------------------------------------- */
+
+  function computeQuestBadgeEvents() {
+    const data = Storage.load();
+    const entryDates = Object.keys(data.entries);
+    if (!entryDates.length) return [];
+    const earliest = entryDates.reduce((min, iso) => (iso < min ? iso : min), entryDates[0]);
+    let cursor = startOfWeek(fromISO(earliest));
+    const todayWeek = startOfWeek(new Date());
+    const goals = Storage.getSettings();
+    const thresholds = [40, 120, 300];
+    let ti = 0;
+    let total = 0;
+    let guard = 0;
+    const events = [];
+    while (cursor <= todayWeek && ti < thresholds.length && guard < 300) {
+      const quests = getQuestsForWeek(cursor);
+      const agg = weekAggregate(cursor);
+      const days = getWeekDayEntries(cursor);
+      quests.forEach((q) => { if (q.evaluate(cursor, agg, days, goals).done) total += q.xp; });
+      while (ti < thresholds.length && total >= thresholds[ti]) {
+        events.push({ date: toISO(addDays(cursor, 6)), type: "quest", icon: "🎖️", title: `Quest-Abzeichen freigeschaltet: ${thresholds[ti]} XP erreicht` });
+        ti++;
+      }
+      cursor = addDays(cursor, 7);
+      guard++;
+    }
+    return events;
+  }
+
+  function computeJourneyEvents() {
+    const events = [];
+    const data = Storage.load();
+
+    const weights = (data.weights || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    weights.forEach((w, i) => {
+      const prev = i > 0 ? weights[i - 1] : null;
+      const delta = prev ? w.kg - prev.kg : null;
+      events.push({
+        date: w.date, type: "weight", icon: "⚖️",
+        title: i === 0
+          ? `Erster Gewichtseintrag: ${w.kg.toFixed(1)} kg`
+          : `Gewicht: ${w.kg.toFixed(1)} kg${delta != null && Math.abs(delta) >= 0.1 ? ` (${delta > 0 ? "+" : ""}${delta.toFixed(1)} kg)` : ""}`
+      });
+    });
+
+    const isActive = (e) => !!e && ((e.activities && e.activities.length > 0) || (e.steps && e.steps > 0));
+    const activeDates = Object.keys(data.entries).filter((iso) => isActive(data.entries[iso])).sort();
+
+    COMPANION_STAGES.forEach((stage) => {
+      if (stage.min === 0) return;
+      if (activeDates.length >= stage.min) {
+        events.push({ date: activeDates[stage.min - 1], type: "giraffi", icon: "🦒", title: `${COMPANION_NAME} erreicht die Stufe „${stage.label}"` });
+      }
+    });
+
+    [7, 30].forEach((threshold) => {
+      let run = 1, hitDate = null;
+      for (let i = 0; i < activeDates.length; i++) {
+        if (i > 0) {
+          const diffDays = Math.round((fromISO(activeDates[i]) - fromISO(activeDates[i - 1])) / 86400000);
+          run = diffDays === 1 ? run + 1 : 1;
+        }
+        if (run >= threshold) { hitDate = activeDates[i]; break; }
+      }
+      if (hitDate) events.push({ date: hitDate, type: "streak", icon: "🔥", title: `${threshold}-Tage-Serie zum ersten Mal erreicht` });
+    });
+
+    const workouts = getAllActivitiesFlat().filter((a) => a.type !== "restday").slice().sort((a, b) => a.date.localeCompare(b.date));
+    [50, 100, 250].forEach((threshold) => {
+      if (workouts.length >= threshold) {
+        events.push({ date: workouts[threshold - 1].date, type: "workout", icon: "💪", title: `${threshold}. Trainingseinheit geloggt` });
+      }
+    });
+
+    const chHistoryAll = computeChallengeHistory({ limit: 1000 });
+    const perfectRows = chHistoryAll.rows.filter((r) => r.done === 7).slice().sort((a, b) => a.wKey.localeCompare(b.wKey));
+    [1, 3, 6].forEach((threshold) => {
+      if (perfectRows.length >= threshold) {
+        const wk = perfectRows[threshold - 1].wKey;
+        events.push({ date: toISO(dateFromWeekKey(wk)), type: "perfectweek", icon: "🏆", title: `${threshold}. perfekte Challenge-Woche (KW ${wk.split("-W")[1]})` });
+      }
+    });
+
+    events.push(...computeQuestBadgeEvents());
+
+    return events;
+  }
+
+  async function renderReise() {
+    const container = document.getElementById("tab-reise");
+    container.innerHTML = `
+      <h2 class="section-title" style="margin-top:0;">🧭 Meine Reise</h2>
+      <div class="card">
+        <div class="small muted" style="margin-bottom:14px;">Fotos, Gewichtsmeilensteine, ${esc(COMPANION_NAME)}s Wachstum und deine Erfolge – chronologisch an einem Ort.</div>
+        <div id="journeyList" class="journey-timeline"><div class="empty-hint">Lädt …</div></div>
+      </div>
+    `;
+
+    const events = computeJourneyEvents();
+    let photos = [];
+    try { photos = await PhotoDB.all(); } catch (e) { console.warn(e); }
+    const photoEvents = photos.map((p) => ({ date: p.date, type: "photo", icon: "📷", title: "Progress-Foto", photo: p }));
+
+    const all = events.concat(photoEvents).sort((a, b) => b.date.localeCompare(a.date));
+    const list = document.getElementById("journeyList");
+    if (!list) return;
+
+    if (!all.length) {
+      list.innerHTML = `<div class="empty-hint">Noch keine Meilensteine – leg los, und deine Reise füllt sich hier von selbst.</div>`;
+      return;
+    }
+
+    list.innerHTML = all.map((ev, i) => {
+      let extra = "";
+      if (ev.type === "photo") {
+        const url = URL.createObjectURL(ev.photo.blob);
+        extra = `<div class="journey-photo-thumb" data-journey-photo="${i}"><img src="${url}" alt="Progress-Foto"></div>`;
+      }
+      return `
+        <div class="journey-event">
+          <div class="journey-marker">${ev.icon}</div>
+          <div class="journey-date">${formatShortDate(fromISO(ev.date))}</div>
+          <div class="journey-title">${esc(ev.title)}</div>
+          ${extra}
+        </div>
+      `;
+    }).join("");
+
+    list.querySelectorAll("[data-journey-photo]").forEach((thumbEl) => {
+      const idx = parseInt(thumbEl.getAttribute("data-journey-photo"), 10);
+      const ev = all[idx];
+      if (!ev || ev.type !== "photo") return;
+      const url = thumbEl.querySelector("img").src;
+      thumbEl.addEventListener("click", () => openPhotoModal(ev.photo, url));
+    });
+  }
+
   function renderTrends() {
     const container = document.getElementById("tab-trends");
     const today = new Date();
@@ -3586,7 +3996,9 @@
       Object.keys(SPORTS).map((key) => `<option value="${key}">${SPORTS[key].icon} ${SPORTS[key].label}</option>`).join("");
 
     container.innerHTML = `
-      <h2 class="section-title" style="margin-top:0;">Diese Woche vs. letzte Woche</h2>
+      ${buildWochenbriefHTML()}
+
+      <h2 class="section-title">Diese Woche vs. letzte Woche</h2>
       <div class="card">${compareRows}</div>
 
       <h2 class="section-title">Minuten – letzte 8 Wochen</h2>
@@ -4359,7 +4771,7 @@
   /* Tab-Steuerung                                                      */
   /* ---------------------------------------------------------------- */
 
-  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht, einstellungen: renderEinstellungen };
+  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht, reise: renderReise, einstellungen: renderEinstellungen };
 
   function switchTab(tab) {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));

@@ -311,6 +311,7 @@
   .companion-svg-wrap{flex:0 0 auto; display:flex; align-items:flex-end; justify-content:center; min-width:118px;}
   .companion-svg-wrap svg{display:block;}
   .companion-info{flex:1; min-width:0;}
+  .companion-name{font-size:11px; font-weight:800; color:var(--accent-dark); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:1px;}
   .companion-stage{font-size:16px; font-weight:800; color:var(--text); margin-bottom:2px;}
   .companion-mood{font-size:12.5px; font-weight:600; color:var(--accent-dark); margin-top:6px; line-height:1.4;}
   .companion-accessories{display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); flex-wrap:wrap;}
@@ -332,6 +333,30 @@
   .wardrobe-item.locked .wardrobe-item-emoji{filter:grayscale(1);}
   .wardrobe-item.wardrobe-none{background:color-mix(in srgb, var(--border) 35%, var(--card));}
   .companion-wardrobe-close{margin-top:4px;}
+
+  .quest-list{display:flex; flex-direction:column; gap:14px;}
+  .quest-item{display:flex; gap:10px; align-items:flex-start;}
+  .quest-icon{flex:0 0 auto; width:30px; height:30px; border-radius:9px; background:var(--accent-soft-2); display:flex; align-items:center; justify-content:center; font-size:15px;}
+  .quest-item.done .quest-icon{background:var(--accent-soft);}
+  .quest-body{flex:1; min-width:0;}
+  .quest-title{font-size:13px; font-weight:700; color:var(--text);}
+  .quest-item.done .quest-title{color:var(--accent-dark);}
+  .quest-progress-label{font-weight:600;}
+  .quest-xp-total strong{color:var(--accent-dark); font-size:14px;}
+
+  .wochenbrief-card{background:linear-gradient(155deg, var(--accent-soft-2), var(--card) 65%);}
+  .wochenbrief-text{font-size:13.5px; line-height:1.7; color:var(--text);}
+
+  .journey-timeline{position:relative;}
+  .journey-event{position:relative; padding-left:36px; padding-bottom:24px;}
+  .journey-event:last-child{padding-bottom:0;}
+  .journey-event::before{content:''; position:absolute; left:13px; top:28px; bottom:-6px; width:2px; background:var(--border);}
+  .journey-event:last-child::before{display:none;}
+  .journey-marker{position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%; background:var(--accent-soft-2); display:flex; align-items:center; justify-content:center; font-size:13px; box-shadow:0 0 0 3px var(--card);}
+  .journey-date{font-size:10.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em;}
+  .journey-title{font-size:13px; font-weight:700; color:var(--text); margin-top:2px; line-height:1.4;}
+  .journey-photo-thumb{margin-top:8px; width:88px; height:88px; border-radius:12px; overflow:hidden; cursor:pointer; box-shadow:var(--shadow-sm);}
+  .journey-photo-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
 
   .data-art-canvas-wrap{width:100%; aspect-ratio:1/1; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-md);}
   .data-art-canvas-wrap canvas{width:100%; height:100%; display:block;}
@@ -791,6 +816,7 @@
     <section class="tab-panel" id="tab-challenge"></section>
     <section class="tab-panel" id="tab-trends"></section>
     <section class="tab-panel" id="tab-gewicht"></section>
+    <section class="tab-panel" id="tab-reise"></section>
     <section class="tab-panel" id="tab-einstellungen"></section>
   </main>
 
@@ -803,6 +829,7 @@
     <button data-tab="challenge"><span class="nav-icon">🏅</span>Challenge</button>
     <button data-tab="trends"><span class="nav-icon">📈</span>Trends</button>
     <button data-tab="gewicht"><span class="nav-icon">⚖️</span>Gewicht</button>
+    <button data-tab="reise"><span class="nav-icon">🧭</span>Reise</button>
   </nav>
 </div>
 
