@@ -643,6 +643,25 @@
     const plankPct = Math.min(100, Math.round((plankVal / goals.plankGoalSeconds) * 100));
 
     return `
+      <h2 class="section-title">📅 Geplant</h2>
+      <div class="card">
+        <div class="activity-list">${planRows}</div>
+        <form class="add-plan-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px;">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Sportart</label>
+              <select class="plan-sport-select">${sportOptions}</select>
+            </div>
+            <div class="field">
+              <label class="field-label">Notiz (optional)</label>
+              <input type="text" class="plan-note-input" placeholder="z. B. 5 km, locker" maxlength="60">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block plan-submit-btn" style="margin-top:8px;">+ Plan hinzufügen</button>
+        </form>
+        <div class="small muted" style="margin-top:10px;">Ein Plan wird nur angezeigt – er zählt erst als Aktivität, wenn du sie unten wie gewohnt wirklich einträgst.</div>
+      </div>
+
       <div class="card">
         <label class="field-label">Schritte</label>
         <input type="number" min="0" step="1" class="steps-input" placeholder="z. B. 8000" value="${entry.steps ?? ""}">
@@ -690,25 +709,6 @@
 
       <div class="card">
         ${challengeBlock}
-      </div>
-
-      <h2 class="section-title">📅 Geplant</h2>
-      <div class="card">
-        <div class="activity-list">${planRows}</div>
-        <form class="add-plan-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px;">
-          <div class="field-grid">
-            <div class="field">
-              <label class="field-label">Sportart</label>
-              <select class="plan-sport-select">${sportOptions}</select>
-            </div>
-            <div class="field">
-              <label class="field-label">Notiz (optional)</label>
-              <input type="text" class="plan-note-input" placeholder="z. B. 5 km, locker" maxlength="60">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-secondary btn-block plan-submit-btn" style="margin-top:8px;">+ Plan hinzufügen</button>
-        </form>
-        <div class="small muted" style="margin-top:10px;">Ein Plan wird nur angezeigt – er zählt erst als Aktivität, wenn du sie unten wie gewohnt wirklich einträgst.</div>
       </div>
 
       <h2 class="section-title">Aktivitäten</h2>

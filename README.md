@@ -604,6 +604,11 @@ das ✕ wieder entfernen.
   erst, sobald du die Aktivität unten wirklich abschickst (unabhängig
   davon, ob du "✓ Übernehmen" genutzt oder die Sportart frei ausgewählt
   hast) – dann gilt der Plan automatisch als erledigt.
+- **Ganz oben statt ganz unten (2026-09-04)**: Der "📅 Geplant"-Bereich
+  steht jetzt an erster Stelle im Tagesbereich von Heute- und
+  Kalender-Tab – direkt nach der Giraffe bzw. dem Kalender-Grid, noch vor
+  Schritte/Wasser/Liegestütze/Plank/Stretching/Challenge. So siehst du
+  auf einen Blick, was ansteht, ohne erst runterscrollen zu müssen.
 
 ## 36. Erweiterte Garderobe für die Giraffe: mehr Accessoires, frei wählbar
 
