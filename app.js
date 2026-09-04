@@ -610,6 +610,7 @@
               </div>
             </div>
             <div class="item-actions">
+              <button class="use-plan-btn" data-use-plan="${p.id}" aria-label="In Aktivitäten-Formular übernehmen" title="Sportart unten übernehmen, Details ergänzen & eintragen">✓ Übernehmen</button>
               <button class="del-btn" data-del-plan="${p.id}" aria-label="Löschen">✕</button>
             </div>
           </div>`;
@@ -956,6 +957,27 @@
 
     cancelEditBtn.addEventListener("click", () => resetToAddMode());
 
+    /* "✓ Übernehmen" bei einem Plan: übernimmt nur die Sportart ins
+       Aktivitäten-Formular darunter (Zeit/Kalorien/Distanz etc. müssen
+       noch ergänzt werden) – der Plan selbst verschwindet erst, wenn die
+       Aktivität wirklich abgeschickt wird (siehe unten). */
+    container.querySelectorAll("[data-use-plan]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-use-plan");
+        const plan = Storage.getPlans(dateISO).find((p) => p.id === id);
+        if (!plan) return;
+        editingId = null;
+        sportSelect.value = plan.type;
+        renderDynamicFields(dynamicFields, plan.type);
+        submitBtn.textContent = "+ Aktivität hinzufügen";
+        cancelEditBtn.style.display = "none";
+        container.querySelectorAll(".activity-item.editing").forEach((el) => el.classList.remove("editing"));
+        const sportLabel = (SPORTS[plan.type] || SPORTS.custom).label;
+        showToast(`${sportLabel} ausgewählt – Details ergänzen & unten eintragen`);
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
     form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       const type = sportSelect.value;
@@ -987,7 +1009,16 @@
         showToast("Aktivität aktualisiert");
       } else {
         Storage.updateEntry(dateISO, (e) => { e.activities.push(activity); });
-        showToast("Aktivität hinzugefügt");
+        // War dafür etwas geplant? Dann gilt der Plan jetzt als erledigt
+        // und verschwindet automatisch – unabhängig davon, ob die
+        // Sportart über "✓ Übernehmen" vorbelegt oder frei eingetippt wurde.
+        const matchingPlan = Storage.getPlans(dateISO).find((p) => p.type === type);
+        if (matchingPlan) {
+          Storage.deletePlan(dateISO, matchingPlan.id);
+          showToast(`✓ ${sport.label} eingetragen – Plan erledigt!`);
+        } else {
+          showToast("Aktivität hinzugefügt");
+        }
       }
       editingId = null;
       onChange();
@@ -2784,11 +2815,13 @@
       const iso = toISO(d);
       const entry = Storage.getEntry(iso);
       const hasData = entry.activities.length > 0 || (entry.steps && entry.steps > 0);
+      const hasPlans = Storage.getPlans(iso).length > 0;
       const classes = ["cal-day"];
       if (d.getMonth() !== month) classes.push("other");
       if (isSameDay(d, today)) classes.push("today");
       if (iso === kalenderSelected) classes.push("selected");
       return `<button class="${classes.join(" ")}" data-date="${iso}">
+        ${hasPlans ? '<span class="plan-mark" title="Etwas geplant">📅</span>' : ""}
         ${d.getDate()}
         ${hasData ? '<span class="mark"><span></span></span>' : ""}
       </button>`;

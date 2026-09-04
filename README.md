@@ -590,6 +590,21 @@ Steht für heute etwas im Plan, taucht das automatisch oben auf dem
 Heute-Tab auf ("Joggen ist geplant"). Pläne lassen sich jederzeit über
 das ✕ wieder entfernen.
 
+**Verbesserungen (2026-09-04):**
+
+- **Kalender-Übersicht**: Tage, für die etwas geplant ist, bekommen im
+  Kalender-Tab oben rechts in der Zelle ein kleines 📅-Symbol – so siehst
+  du auf einen Blick im ganzen Monat, was ansteht, ohne jeden Tag einzeln
+  anklicken zu müssen.
+- **"✓ Übernehmen"**: Jeder geplante Eintrag hat jetzt neben dem ✕ auch
+  einen "✓ Übernehmen"-Button. Er übernimmt nur die Sportart direkt ins
+  Aktivitäten-Formular darunter – Zeit, Kalorien, Distanz & Co. trägst du
+  wie gewohnt selbst ein, weil die ja erst nach dem Training feststehen.
+  Der Plan verschwindet **nicht** schon durch das Übernehmen, sondern
+  erst, sobald du die Aktivität unten wirklich abschickst (unabhängig
+  davon, ob du "✓ Übernehmen" genutzt oder die Sportart frei ausgewählt
+  hast) – dann gilt der Plan automatisch als erledigt.
+
 ## 36. Erweiterte Garderobe für die Giraffe: mehr Accessoires, frei wählbar
 
 Die Giraffen-Accessoires (Abschnitt 29) wurden deutlich ausgebaut:

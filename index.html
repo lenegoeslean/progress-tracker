@@ -219,11 +219,13 @@
   }
   .activity-item.editing{border-color:var(--accent); background:var(--accent-soft-2); box-shadow:var(--shadow-sm);}
   .item-actions{display:flex; align-items:center; gap:2px; flex-shrink:0;}
-  .del-btn,.edit-btn{background:none; border:none; color:var(--text-muted); padding:6px; border-radius:9px; transition:background-color .12s ease, color .12s ease;}
+  .del-btn,.edit-btn,.use-plan-btn{background:none; border:none; color:var(--text-muted); padding:6px; border-radius:9px; transition:background-color .12s ease, color .12s ease;}
   .del-btn{font-size:16px;}
   .edit-btn{font-size:14px;}
+  .use-plan-btn{font-size:14px; font-weight:800; color:var(--accent-dark);}
   .del-btn:active{background:var(--accent-soft); color:var(--accent-dark);}
   .edit-btn:active{background:var(--accent-soft-2); color:var(--accent-dark);}
+  .use-plan-btn:active{background:var(--accent-soft-2);}
 
   .empty-hint{color:var(--text-muted); font-size:13px; text-align:center; padding:18px 8px;}
 
@@ -361,6 +363,7 @@
   .cal-day .mark{position:absolute; bottom:4px; display:flex; gap:2px;}
   .cal-day .mark span{width:4px; height:4px; border-radius:50%; background:var(--accent);}
   .cal-day.selected .mark span{background:#fff;}
+  .cal-day .plan-mark{position:absolute; top:3px; right:5px; font-size:8px; line-height:1; opacity:0.85;}
 
   /* photos */
   .photo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
