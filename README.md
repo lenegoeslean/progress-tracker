@@ -494,19 +494,18 @@ echte Gewohnheiten wächst statt nur eine Statistik zu optimieren.
 - **Stimmung**: traurig, wenn deine aktuelle Streak gerissen ist,
   fröhlich, wenn du heute schon etwas eingetragen hast, sonst neutral
   wartend.
-- **6 Accessoires zum Freischalten**, gekoppelt an deine bestehenden
-  Erfolge/Badges (Schleife, Sonnenbrille, Schal, Blume, Medaille, Hut) –
-  ausgegraut in der Übersichtsleiste, solange sie noch nicht verdient
-  sind.
-- **Die Giraffe trägt ihre Belohnungen wirklich** (2026-09-03 ergänzt):
-  sobald ein Accessoire freigeschaltet ist, erscheint es direkt am
-  Giraffen-Bild selbst – die Schleife am Hals, die Sonnenbrille im
-  Gesicht, der Schal, die Blume am Ohr, die Medaille auf der Brust, der
-  Hut auf dem Kopf. Der Hut entfällt bei der "Stolzen Giraffe", weil dort
-  schon die Krone sitzt. Beim allerersten Freischalten eines Accessoires
-  gibt's zusätzlich einen kurzen Feier-Hinweis ("Deine Giraffe hat ein
-  neues Outfit bekommen: 🎀 …"). Die Giraffe selbst (Form, Wachstumsstufen,
-  Stimmung) bleibt unverändert.
+- **18 Accessoires in 6 Kategorien zum Freischalten** (siehe Abschnitt 36
+  für die ausführliche Garderobe), gekoppelt an echte, ohnehin berechnete
+  Werte wie Streak-Rekord oder aktive Tage – ausgegraut/gesperrt, solange
+  sie noch nicht verdient sind.
+- **Die Giraffe trägt ihre Belohnungen wirklich**: sobald ein Accessoire
+  freigeschaltet ist, erscheint es direkt am Giraffen-Bild selbst –
+  Kopfschmuck, Halsschmuck (oben und als Schal), Brille, Blume am Ohr,
+  Medaille auf der Brust. Kopfschmuck entfällt bei der "Stolzen Giraffe",
+  weil dort schon die Krone sitzt. Beim allerersten Freischalten eines
+  Accessoires gibt's zusätzlich einen kurzen Feier-Hinweis ("Deine Giraffe
+  hat ein neues Outfit bekommen: 🎀 …"). Die Giraffe selbst (Form,
+  Wachstumsstufen, Stimmung) bleibt unverändert.
 
 ## 30. Datenkunst-Generator
 
@@ -590,6 +589,40 @@ im Abschnitt "Aktivitäten" ein, sobald sie wirklich stattgefunden hat.
 Steht für heute etwas im Plan, taucht das automatisch oben auf dem
 Heute-Tab auf ("Joggen ist geplant"). Pläne lassen sich jederzeit über
 das ✕ wieder entfernen.
+
+## 36. Erweiterte Garderobe für die Giraffe: mehr Accessoires, frei wählbar
+
+Die Giraffen-Accessoires (Abschnitt 29) wurden deutlich ausgebaut:
+
+- **6 Kategorien ("Slots")**, jede mit **3 Stufen** – insgesamt 18
+  Accessoires statt vorher 6:
+  - **Blume am Ohr**: Blüte 🌸 → Kleeblatt 🍀 → Schmetterling 🦋
+    (perfekte Challenge-Wochen)
+  - **Kopfschmuck**: Käppi 🧢 → Zylinder 🎩 → Partyhut 🎉
+    (aktive Tage insgesamt)
+  - **Hals oben**: Bandana 🎀 → Fliege 🔷 → Glitzer-Halsband ✨
+    (Streak-Rekord in Tagen)
+  - **Brille**: Sonnenbrille 🕶️ → Herzbrille 💕 → Stern-Brille ⭐
+    (Streak-Rekord in Tagen)
+  - **Schal**: Schal 🧣 → Winterschal 🌟 → Regenbogenschal 🌈
+    (Wochen mit erreichtem Wochenziel in Folge)
+  - **Medaille**: Bronze 🥉 → Gold 🏅 → Pokal 🏆
+    (geloggte Trainingseinheiten insgesamt)
+- **Selbst aussuchen, was die Giraffe trägt**: über den neuen Button
+  "🎨 Giraffe ausstatten" unter dem Giraffen-Bild öffnet sich eine
+  Übersicht mit allen 6 Kategorien. Pro Kategorie lässt sich per Klick
+  wählen, welche freigeschaltete Stufe getragen wird – oder "Ohne", falls
+  du in dem Slot lieber nichts tragen möchtest. Noch gesperrte Stufen
+  sind ausgegraut mit 🔒 und zeigen beim Antippen (Tooltip), wie viel bis
+  zur Freischaltung fehlt.
+  - Ohne eigene Auswahl trägt die Giraffe automatisch die jeweils
+    höchste bereits freigeschaltete Stufe pro Kategorie – die Garderobe
+    ist also von Anfang an sinnvoll bestückt, ohne dass du etwas
+    einstellen musst.
+  - Deine Auswahl wird gespeichert und bleibt auch nach dem
+    Schließen/Neuladen der App erhalten.
+- Der Feier-Hinweis beim ersten Freischalten funktioniert für alle 18
+  Accessoires, unabhängig davon, was gerade ausgestattet ist.
 
 ## Mögliche nächste Schritte
 

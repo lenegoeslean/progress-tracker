@@ -379,12 +379,25 @@
         theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
         weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
         targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS, chaosMode: true,
-        seenAccessoryKeys: []
+        seenAccessoryKeys: [], equippedAccessories: {}
       }, data.settings);
     },
     saveSettings(patch) {
       const data = this.load();
       data.settings = Object.assign({}, data.settings, patch);
+      this.save();
+    },
+    /* Merge-Update nur für einen einzelnen Ausrüstungs-Slot der Giraffe –
+       saveSettings() ersetzt Top-Level-Keys komplett, ein naives
+       saveSettings({equippedAccessories:{...}}) würde also die Wahl in
+       allen anderen Slots löschen. itemKey ist entweder ein Item-Key,
+       "none" (bewusst nichts tragen) oder null/undefined (automatisch
+       die höchste freigeschaltete Stufe tragen). */
+    setEquippedAccessory(slot, itemKey) {
+      const data = this.load();
+      const current = (data.settings && data.settings.equippedAccessories) || {};
+      const next = Object.assign({}, current, { [slot]: itemKey });
+      data.settings = Object.assign({}, data.settings, { equippedAccessories: next });
       this.save();
     },
     exportAll() {
@@ -1000,18 +1013,104 @@
     { min: 100, key: "majestic", label: "Stolze Giraffe", size: 176, spots: 9, crown: true }
   ];
 
-  const COMPANION_ACCESSORIES = [
-    { key: "bandana", emoji: "🎀", badgeLabel: "7-Tage-Serie", title: "7-Tage-Serie" },
-    { key: "sunglasses", emoji: "🕶️", badgeLabel: "30-Tage-Serie", title: "30-Tage-Serie" },
-    { key: "scarf", emoji: "🧣", badgeLabel: "Zielstrebig", title: "Zielstrebig" },
-    { key: "flower", emoji: "🌸", badgeLabel: "Perfekte Woche", title: "Perfekte Woche" },
-    { key: "medal", emoji: "🏅", badgeLabel: "100 Einheiten", title: "100 Einheiten" },
-    { key: "hat", emoji: "🎩", badgeLabel: "50 aktive Tage", title: "50 aktive Tage" }
+  /* Jeder Ausrüstungs-Platz ("Slot") an der Giraffe hat mehrere Stufen
+     ("Tiers"), die nacheinander anhand echter, ohnehin schon berechneter
+     Werte freigeschaltet werden. Standardmäßig trägt die Giraffe pro Slot
+     automatisch die höchste freigeschaltete Stufe – man kann aber über
+     die Ausstatten-Ansicht selbst wählen, was sie trägt (auch "Ohne"). */
+  const COMPANION_SLOTS = [
+    {
+      key: "ohr", label: "Blume am Ohr", stat: "perfectWeeks", statLabel: "perfekte Challenge-Woche(n)",
+      items: [
+        { key: "flower", emoji: "🌸", title: "Blüte", tier: 1, threshold: 1 },
+        { key: "clover", emoji: "🍀", title: "Kleeblatt", tier: 2, threshold: 3 },
+        { key: "butterfly", emoji: "🦋", title: "Schmetterling", tier: 3, threshold: 6 }
+      ]
+    },
+    {
+      key: "kopf", label: "Kopfschmuck", stat: "totalActiveDays", statLabel: "aktive Tage insgesamt",
+      items: [
+        { key: "cap", emoji: "🧢", title: "Käppi", tier: 1, threshold: 20 },
+        { key: "hat", emoji: "🎩", title: "Zylinder", tier: 2, threshold: 50 },
+        { key: "partyhat", emoji: "🎉", title: "Partyhut", tier: 3, threshold: 150 }
+      ]
+    },
+    {
+      key: "bandana", label: "Hals (oben)", stat: "longestStreak", statLabel: "Tage Streak am Stück (Rekord)",
+      items: [
+        { key: "bandana", emoji: "🎀", title: "Bandana", tier: 1, threshold: 7 },
+        { key: "bowtie", emoji: "🔷", title: "Fliege", tier: 2, threshold: 14 },
+        { key: "sparklecollar", emoji: "✨", title: "Glitzer-Halsband", tier: 3, threshold: 30 }
+      ]
+    },
+    {
+      key: "brille", label: "Brille", stat: "longestStreak", statLabel: "Tage Streak am Stück (Rekord)",
+      items: [
+        { key: "sunglasses", emoji: "🕶️", title: "Sonnenbrille", tier: 1, threshold: 30 },
+        { key: "heartglasses", emoji: "💕", title: "Herzbrille", tier: 2, threshold: 60 },
+        { key: "starglasses", emoji: "⭐", title: "Stern-Brille", tier: 3, threshold: 100 }
+      ]
+    },
+    {
+      key: "schal", label: "Schal", stat: "weeklyGoalStreak", statLabel: "Wochen Wochenziel in Folge",
+      items: [
+        { key: "scarf", emoji: "🧣", title: "Schal", tier: 1, threshold: 4 },
+        { key: "winterscarf", emoji: "🌟", title: "Winterschal", tier: 2, threshold: 8 },
+        { key: "rainbowscarf", emoji: "🌈", title: "Regenbogenschal", tier: 3, threshold: 16 }
+      ]
+    },
+    {
+      key: "medaille", label: "Medaille", stat: "totalWorkouts", statLabel: "geloggte Trainingseinheiten",
+      items: [
+        { key: "bronze", emoji: "🥉", title: "Bronze-Medaille", tier: 1, threshold: 50 },
+        { key: "gold", emoji: "🏅", title: "Gold-Medaille", tier: 2, threshold: 100 },
+        { key: "trophy", emoji: "🏆", title: "Pokal", tier: 3, threshold: 250 }
+      ]
+    }
   ];
+
+  /* Merkt sich, ob die Ausstatten-Ansicht gerade offen ist (rein visueller
+     UI-Zustand, kein gespeicherter Wert – soll nur Re-Renders innerhalb
+     der Session überstehen). */
+  let companionWardrobeOpen = false;
+
+  function computeCompanionUnlockStats() {
+    const streaks = computeStreaks();
+    const weeklyStreak = computeWeeklyGoalStreak();
+    const chAll = computeChallengeHistory({ limit: 1000 });
+    const totalWorkouts = getAllActivitiesFlat().filter((a) => a.type !== "restday").length;
+    return {
+      totalActiveDays: streaks.totalActiveDays,
+      longestStreak: streaks.longest,
+      weeklyGoalStreak: weeklyStreak.streak,
+      perfectWeeks: chAll.perfectWeeks,
+      totalWorkouts: totalWorkouts
+    };
+  }
+
+  /* Löst pro Slot aus, was die Giraffe tatsächlich trägt: eine bewusste
+     Wahl aus den Einstellungen, wenn sie noch freigeschaltet ist – sonst
+     automatisch die höchste freigeschaltete Stufe. "none" bedeutet
+     ausdrücklich "nichts in diesem Slot tragen". */
+  function resolveEquippedAccessories(unlockStats, chosen) {
+    const result = {};
+    COMPANION_SLOTS.forEach((slot) => {
+      const unlockedItems = slot.items.filter((it) => unlockStats[slot.stat] >= it.threshold);
+      const highestUnlocked = unlockedItems.length ? unlockedItems[unlockedItems.length - 1] : null;
+      const pick = chosen ? chosen[slot.key] : undefined;
+      if (pick === "none") {
+        result[slot.key] = null;
+      } else if (pick && unlockedItems.some((it) => it.key === pick)) {
+        result[slot.key] = slot.items.find((it) => it.key === pick);
+      } else {
+        result[slot.key] = highestUnlocked;
+      }
+    });
+    return result;
+  }
 
   function computeCompanionState() {
     const streaks = computeStreaks();
-    const badges = computeBadges();
     let stage = COMPANION_STAGES[0];
     COMPANION_STAGES.forEach((s) => { if (streaks.totalActiveDays >= s.min) stage = s; });
     const stageIdx = COMPANION_STAGES.indexOf(stage);
@@ -1027,11 +1126,15 @@
     if (streaks.current === 0) mood = "sad";
     else if (todayActive) mood = "happy";
 
-    const accessories = COMPANION_ACCESSORIES.map((a) => Object.assign({}, a, {
-      earned: badges.some((b) => b.label === a.badgeLabel && b.earned)
+    const unlockStats = computeCompanionUnlockStats();
+    const settings = Storage.getSettings();
+    const chosen = settings.equippedAccessories || {};
+    const slots = COMPANION_SLOTS.map((slot) => Object.assign({}, slot, {
+      items: slot.items.map((it) => Object.assign({}, it, { earned: unlockStats[slot.stat] >= it.threshold }))
     }));
+    const equipped = resolveEquippedAccessories(unlockStats, chosen);
 
-    return { stage, next, mood, accessories, totalActiveDays: streaks.totalActiveDays, currentStreak: streaks.current };
+    return { stage, next, mood, slots, equipped, unlockStats, totalActiveDays: streaks.totalActiveDays, currentStreak: streaks.current };
   }
 
   const COMPANION_SPOT_POSITIONS_NORMAL = [
@@ -1070,82 +1173,127 @@
     `;
   }
 
-  /* Die freigeschalteten Erfolgs-Accessoires werden jetzt wirklich von der
+  /* Die freigeschalteten Erfolgs-Accessoires werden wirklich von der
      Giraffe getragen statt nur als kleine Chip-Liste daneben zu stehen.
-     Zwei Koordinatensätze (Baby- vs. normale Proportionen), analog zu den
-     Flecken oben. Der Hut entfällt, sobald ohnehin schon die Krone der
-     "Stolzen Giraffe" sitzt (beides am Kopf, würde sich sonst überlagern –
-     die Krone gewinnt als höchste Stufe). */
-  function buildCompanionAccessoriesSVG(accessories, isBaby, hasCrown) {
-    const earned = {};
-    accessories.forEach((a) => { earned[a.key] = a.earned; });
+     Jeder Slot kann eine von mehreren Stufen tragen (siehe COMPANION_SLOTS)
+     – "equipped" enthält pro Slot entweder das gewählte Item-Objekt oder
+     null. Zwei Koordinatensätze (Baby- vs. normale Proportionen), analog
+     zu den Flecken oben. Kopfschmuck entfällt, sobald ohnehin schon die
+     Krone der "Stolzen Giraffe" sitzt (beides am Kopf, würde sich sonst
+     überlagern – die Krone gewinnt als höchste Stufe). */
+  function buildCompanionAccessoriesSVG(equipped, isBaby, hasCrown) {
     let body = "";
     let face = "";
+    const ohr = equipped.ohr, kopf = equipped.kopf, bandana = equipped.bandana,
+      brille = equipped.brille, schal = equipped.schal, medaille = equipped.medaille;
 
-    if (isBaby) {
-      if (earned.flower) {
-        body += `<g transform="translate(66 84)">
-          <circle cx="0" cy="-5" r="3.4" fill="#FF9FC9"/>
-          <circle cx="4.7" cy="-1.5" r="3.4" fill="#FF9FC9"/>
-          <circle cx="3.1" cy="4.2" r="3.4" fill="#FF9FC9"/>
-          <circle cx="-3.1" cy="4.2" r="3.4" fill="#FF9FC9"/>
-          <circle cx="-4.7" cy="-1.5" r="3.4" fill="#FF9FC9"/>
-          <circle cx="0" cy="0" r="3" fill="#F2C94C"/>
+    // --- Ohr: Blüte / Kleeblatt / Schmetterling -----------------------
+    if (ohr) {
+      const [ox, oy] = isBaby ? [66, 84] : [70, 28];
+      if (ohr.key === "flower") {
+        const r = isBaby ? 3.4 : 3.2, rc = isBaby ? 3 : 2.8;
+        body += `<g transform="translate(${ox} ${oy})">
+          <circle cx="0" cy="-5" r="${r}" fill="#FF9FC9"/>
+          <circle cx="4.7" cy="-1.5" r="${r}" fill="#FF9FC9"/>
+          <circle cx="3.1" cy="4.2" r="${r}" fill="#FF9FC9"/>
+          <circle cx="-3.1" cy="4.2" r="${r}" fill="#FF9FC9"/>
+          <circle cx="-4.7" cy="-1.5" r="${r}" fill="#FF9FC9"/>
+          <circle cx="0" cy="0" r="${rc}" fill="#F2C94C"/>
         </g>`;
-      }
-      if (!hasCrown && earned.hat) {
-        body += `<g><rect x="88" y="58" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="70" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="66" width="24" height="3" fill="#B5495A"/></g>`;
-      }
-      if (earned.bandana) {
-        body += `<g><path d="M100,112 L86,104 L86,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,112 L114,104 L114,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="112" r="4.5" fill="#E23E76"/></g>`;
-      }
-      if (earned.scarf) {
-        body += `<g fill="#8C4FC9"><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z"/><path d="M92,148 L89,178 L96,178 L98,150 Z"/><path d="M108,148 L111,174 L104,174 L102,150 Z"/></g>`;
-      }
-      if (earned.medal) {
-        body += `<g><path d="M94,164 L100,180 L106,164" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="185" r="7.5" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="185" r="3.7" fill="#FFF6D9"/></g>`;
-      }
-      if (earned.sunglasses) {
-        face += `<g><rect x="85" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="102" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/><line x1="83" y1="99.5" x2="85" y2="101" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="115" y1="101" x2="117" y2="99.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="86" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
-      }
-    } else {
-      if (earned.flower) {
-        body += `<g transform="translate(70 28)">
-          <circle cx="0" cy="-5" r="3.2" fill="#FF9FC9"/>
-          <circle cx="4.5" cy="-1.5" r="3.2" fill="#FF9FC9"/>
-          <circle cx="3" cy="4" r="3.2" fill="#FF9FC9"/>
-          <circle cx="-3" cy="4" r="3.2" fill="#FF9FC9"/>
-          <circle cx="-4.5" cy="-1.5" r="3.2" fill="#FF9FC9"/>
-          <circle cx="0" cy="0" r="2.8" fill="#F2C94C"/>
+      } else if (ohr.key === "clover") {
+        body += `<g transform="translate(${ox} ${oy})">
+          <circle cx="-3" cy="-3" r="4" fill="#7CB369"/>
+          <circle cx="3" cy="-3" r="4" fill="#7CB369"/>
+          <circle cx="0" cy="3" r="4" fill="#7CB369"/>
+          <rect x="-0.7" y="4" width="1.4" height="7" fill="#5C9A4C"/>
         </g>`;
-      }
-      if (!hasCrown && earned.hat) {
-        body += `<g><rect x="88" y="2" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="14" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="10" width="24" height="3" fill="#B5495A"/></g>`;
-      }
-      if (earned.bandana) {
-        body += `<g><path d="M100,56 L88,49 L88,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,56 L112,49 L112,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="56" r="4" fill="#E23E76"/></g>`;
-      }
-      if (earned.scarf) {
-        body += `<g fill="#8C4FC9"><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z"/><path d="M90,108 L86,146 L94,146 L96,110 Z"/><path d="M110,108 L114,140 L106,140 L104,110 Z"/></g>`;
-      }
-      if (earned.medal) {
-        body += `<g><path d="M94,140 L100,158 L106,140" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="163" r="8" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="163" r="4" fill="#FFF6D9"/></g>`;
-      }
-      if (earned.sunglasses) {
-        face += `<g><rect x="86" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="102" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="98" y="43.5" width="4" height="2.4" fill="#2B2B2B"/><line x1="84" y1="44" x2="86" y2="45.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="114" y1="45.5" x2="116" y2="44" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="87" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+      } else if (ohr.key === "butterfly") {
+        body += `<g transform="translate(${ox} ${oy})">
+          <ellipse cx="-4" cy="-2" rx="4.5" ry="3.4" fill="#B98CE0"/>
+          <ellipse cx="4" cy="-2" rx="4.5" ry="3.4" fill="#B98CE0"/>
+          <ellipse cx="-3.4" cy="3" rx="3.2" ry="2.4" fill="#D6AEF0"/>
+          <ellipse cx="3.4" cy="3" rx="3.2" ry="2.4" fill="#D6AEF0"/>
+          <rect x="-0.6" y="-4" width="1.2" height="8" rx="0.6" fill="#5A3D7A"/>
+        </g>`;
       }
     }
+
+    // --- Kopf: Käppi / Zylinder / Partyhut (weicht der Krone) ----------
+    if (!hasCrown && kopf) {
+      if (isBaby) {
+        if (kopf.key === "cap") body += `<g><path d="M84,70 Q100,52 116,70 Z" fill="#5B8DEF"/><rect x="82" y="69" width="36" height="4" rx="2" fill="#3E6FD9"/></g>`;
+        else if (kopf.key === "hat") body += `<g><rect x="88" y="58" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="70" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="66" width="24" height="3" fill="#B5495A"/></g>`;
+        else if (kopf.key === "partyhat") body += `<g><path d="M100,48 L88,72 L112,72 Z" fill="#FF6FA5"/><path d="M100,48 L96,60 L104,60 Z" fill="#FFD166"/><circle cx="100" cy="46" r="3.5" fill="#F2C94C"/><rect x="86" y="70" width="28" height="3" rx="1.5" fill="#E23E76"/></g>`;
+      } else {
+        if (kopf.key === "cap") body += `<g><path d="M84,14 Q100,-4 116,14 Z" fill="#5B8DEF"/><rect x="82" y="13" width="36" height="4" rx="2" fill="#3E6FD9"/></g>`;
+        else if (kopf.key === "hat") body += `<g><rect x="88" y="2" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="14" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="10" width="24" height="3" fill="#B5495A"/></g>`;
+        else if (kopf.key === "partyhat") body += `<g><path d="M100,-8 L88,16 L112,16 Z" fill="#FF6FA5"/><path d="M100,-8 L96,4 L104,4 Z" fill="#FFD166"/><circle cx="100" cy="-10" r="3.5" fill="#F2C94C"/><rect x="86" y="14" width="28" height="3" rx="1.5" fill="#E23E76"/></g>`;
+      }
+    }
+
+    // --- Hals oben: Bandana / Fliege / Glitzer-Halsband -----------------
+    if (bandana) {
+      if (isBaby) {
+        if (bandana.key === "bandana") body += `<g><path d="M100,112 L86,104 L86,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,112 L114,104 L114,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="112" r="4.5" fill="#E23E76"/></g>`;
+        else if (bandana.key === "bowtie") body += `<g><path d="M100,112 L88,106 L88,118 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><path d="M100,112 L112,106 L112,118 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><rect x="97" y="108" width="6" height="8" rx="1.5" fill="#3E6FD9"/></g>`;
+        else if (bandana.key === "sparklecollar") body += `<g><ellipse cx="100" cy="112" rx="15" ry="6" fill="none" stroke="#F2C94C" stroke-width="3"/><circle cx="86" cy="110" r="1.6" fill="#FFF6D9"/><circle cx="114" cy="110" r="1.6" fill="#FFF6D9"/><circle cx="100" cy="118" r="1.6" fill="#FFF6D9"/></g>`;
+      } else {
+        if (bandana.key === "bandana") body += `<g><path d="M100,56 L88,49 L88,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,56 L112,49 L112,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="56" r="4" fill="#E23E76"/></g>`;
+        else if (bandana.key === "bowtie") body += `<g><path d="M100,56 L88,50 L88,62 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><path d="M100,56 L112,50 L112,62 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><rect x="97" y="52" width="6" height="8" rx="1.5" fill="#3E6FD9"/></g>`;
+        else if (bandana.key === "sparklecollar") body += `<g><ellipse cx="100" cy="56" rx="15" ry="6" fill="none" stroke="#F2C94C" stroke-width="3"/><circle cx="86" cy="54" r="1.6" fill="#FFF6D9"/><circle cx="114" cy="54" r="1.6" fill="#FFF6D9"/><circle cx="100" cy="62" r="1.6" fill="#FFF6D9"/></g>`;
+      }
+    }
+
+    // --- Schal: Schal / Winterschal / Regenbogenschal -------------------
+    if (schal) {
+      if (isBaby) {
+        if (schal.key === "scarf") body += `<g fill="#8C4FC9"><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z"/><path d="M92,148 L89,178 L96,178 L98,150 Z"/><path d="M108,148 L111,174 L104,174 L102,150 Z"/></g>`;
+        else if (schal.key === "winterscarf") body += `<g><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z" fill="#2F9E9E"/><path d="M92,148 L89,178 L96,178 L98,150 Z" fill="#2F9E9E"/><path d="M108,148 L111,174 L104,174 L102,150 Z" fill="#2F9E9E"/><rect x="90" y="155" width="6" height="4" fill="#fff" opacity="0.6"/><rect x="106" y="155" width="6" height="4" fill="#fff" opacity="0.6"/></g>`;
+        else if (schal.key === "rainbowscarf") body += `<g><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z" fill="#FF6FA5"/><path d="M92,148 L89,163 L96,163 L97,150 Z" fill="#FFD166"/><path d="M92,163 L89,178 L96,178 L96,163 Z" fill="#5B8DEF"/><path d="M108,148 L111,161 L104,161 L102,150 Z" fill="#7CB369"/><path d="M108,161 L111,174 L104,174 L104,161 Z" fill="#B98CE0"/></g>`;
+      } else {
+        if (schal.key === "scarf") body += `<g fill="#8C4FC9"><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z"/><path d="M90,108 L86,146 L94,146 L96,110 Z"/><path d="M110,108 L114,140 L106,140 L104,110 Z"/></g>`;
+        else if (schal.key === "winterscarf") body += `<g><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z" fill="#2F9E9E"/><path d="M90,108 L86,146 L94,146 L96,110 Z" fill="#2F9E9E"/><path d="M110,108 L114,140 L106,140 L104,110 Z" fill="#2F9E9E"/><rect x="88" y="115" width="6" height="4" fill="#fff" opacity="0.6"/><rect x="108" y="115" width="6" height="4" fill="#fff" opacity="0.6"/></g>`;
+        else if (schal.key === "rainbowscarf") body += `<g><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z" fill="#FF6FA5"/><path d="M90,108 L86,127 L94,127 L95,110 Z" fill="#FFD166"/><path d="M90,127 L86,146 L94,146 L94,127 Z" fill="#5B8DEF"/><path d="M110,108 L114,125 L106,125 L104,110 Z" fill="#7CB369"/><path d="M110,125 L114,140 L106,140 L106,125 Z" fill="#B98CE0"/></g>`;
+      }
+    }
+
+    // --- Medaille: Bronze / Gold / Pokal (Brustbereich) -----------------
+    if (medaille) {
+      if (isBaby) {
+        if (medaille.key === "bronze") body += `<g><path d="M95,166 L100,179 L105,166" stroke="#8899C9" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="100" cy="183" r="6" fill="#C97A4C" stroke="#A5613A" stroke-width="1.3"/></g>`;
+        else if (medaille.key === "gold") body += `<g><path d="M94,164 L100,180 L106,164" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="185" r="7.5" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="185" r="3.7" fill="#FFF6D9"/></g>`;
+        else if (medaille.key === "trophy") body += `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,164 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="176" width="6" height="6"/><rect x="92" y="182" width="16" height="4" rx="1.5"/><path d="M92,166 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,166 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
+      } else {
+        if (medaille.key === "bronze") body += `<g><path d="M95,142 L100,157 L105,142" stroke="#8899C9" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="100" cy="161" r="6.5" fill="#C97A4C" stroke="#A5613A" stroke-width="1.3"/></g>`;
+        else if (medaille.key === "gold") body += `<g><path d="M94,140 L100,158 L106,140" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="163" r="8" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="163" r="4" fill="#FFF6D9"/></g>`;
+        else if (medaille.key === "trophy") body += `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,140 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="152" width="6" height="6"/><rect x="92" y="158" width="16" height="4" rx="1.5"/><path d="M92,142 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,142 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
+      }
+    }
+
+    // --- Brille: Sonnenbrille / Herzbrille / Sternbrille (auf dem Gesicht) --
+    if (brille) {
+      if (isBaby) {
+        if (brille.key === "sunglasses") face += `<g><rect x="85" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="102" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/><line x1="83" y1="99.5" x2="85" y2="101" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="115" y1="101" x2="117" y2="99.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="86" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+        else if (brille.key === "heartglasses") face += `<g fill="#FF6FA5"><path d="M91.5,105 C85,100 88,94 91.5,97 C95,94 98,100 91.5,105 Z"/><path d="M108.5,105 C102,100 105,94 108.5,97 C112,94 115,100 108.5,105 Z"/></g>`;
+        else if (brille.key === "starglasses") face += `<g><circle cx="91.5" cy="101.5" r="6.5" fill="#FFF3B0" opacity="0.9"/><circle cx="108.5" cy="101.5" r="6.5" fill="#FFF3B0" opacity="0.9"/><path d="M91.5,95 L93,100 L98,101.5 L93,103 L91.5,108 L90,103 L85,101.5 L90,100 Z" fill="#F2C94C"/><path d="M108.5,95 L110,100 L115,101.5 L110,103 L108.5,108 L107,103 L102,101.5 L107,100 Z" fill="#F2C94C"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/></g>`;
+      } else {
+        if (brille.key === "sunglasses") face += `<g><rect x="86" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="102" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="98" y="43.5" width="4" height="2.4" fill="#2B2B2B"/><line x1="84" y1="44" x2="86" y2="45.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="114" y1="45.5" x2="116" y2="44" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="87" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+        else if (brille.key === "heartglasses") face += `<g fill="#FF6FA5"><path d="M92,49 C86,44 89,38 92,41 C95,38 98,44 92,49 Z"/><path d="M108,49 C102,44 105,38 108,41 C111,38 114,44 108,49 Z"/></g>`;
+        else if (brille.key === "starglasses") face += `<g><circle cx="92" cy="45.5" r="6" fill="#FFF3B0" opacity="0.9"/><circle cx="108" cy="45.5" r="6" fill="#FFF3B0" opacity="0.9"/><path d="M92,39 L93.3,44 L98,45.5 L93.3,47 L92,52 L90.7,47 L86,45.5 L90.7,44 Z" fill="#F2C94C"/><path d="M108,39 L109.3,44 L114,45.5 L109.3,47 L108,52 L106.7,47 L102,45.5 L106.7,44 Z" fill="#F2C94C"/><rect x="98" y="43.2" width="4" height="2.5" fill="#2B2B2B"/></g>`;
+      }
+    }
+
     return { body, face };
   }
 
-  function buildCompanionSVG(stage, mood, accessories) {
+  function buildCompanionSVG(stage, mood, equipped) {
     const isBaby = stage.key === "baby";
     const bodyColor = "#F6D9A6", darkColor = "#E0B679", spotColor = "#C97A3B", muzzleColor = "#FBEAD0";
     const spots = (isBaby ? COMPANION_SPOT_POSITIONS_BABY : COMPANION_SPOT_POSITIONS_NORMAL)
       .slice(0, stage.spots)
       .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="5" fill="${spotColor}" opacity="0.85"/>`)
       .join("");
-    const acc = buildCompanionAccessoriesSVG(accessories || [], isBaby, !!stage.crown);
+    const acc = buildCompanionAccessoriesSVG(equipped || {}, isBaby, !!stage.crown);
 
     if (isBaby) {
       return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
@@ -1202,10 +1350,12 @@
   function checkCompanionAccessoryUnlocks(state) {
     const settings = Storage.getSettings();
     const seen = settings.seenAccessoryKeys || [];
-    const earnedNow = state.accessories.filter((a) => a.earned).map((a) => a.key);
-    const newlyEarned = state.accessories.filter((a) => a.earned && !seen.includes(a.key));
+    const allItems = [];
+    state.slots.forEach((slot) => slot.items.forEach((it) => allItems.push(it)));
+    const earnedNow = allItems.filter((it) => it.earned).map((it) => it.key);
+    const newlyEarned = allItems.filter((it) => it.earned && !seen.includes(it.key));
     if (newlyEarned.length) {
-      const names = newlyEarned.map((a) => `${a.emoji} ${a.title}`).join(", ");
+      const names = newlyEarned.map((it) => `${it.emoji} ${it.title}`).join(", ");
       showToast(`Deine Giraffe hat ein neues Outfit bekommen: ${names}! 🎉`);
     }
     if (newlyEarned.length || seen.length !== earnedNow.length) {
@@ -1215,7 +1365,7 @@
 
   function buildCompanionHTML(precomputedState) {
     const state = precomputedState || computeCompanionState();
-    const svg = buildCompanionSVG(state.stage, state.mood, state.accessories);
+    const svg = buildCompanionSVG(state.stage, state.mood, state.equipped);
     const moodText = state.mood === "happy"
       ? "Sie freut sich – du warst heute schon aktiv! 🎉"
       : state.mood === "sad"
@@ -1224,9 +1374,44 @@
     const nextText = state.next
       ? `Noch ${state.next.min - state.totalActiveDays} aktive Tage bis „${state.next.label}"`
       : "Höchste Stufe erreicht – mehr geht nicht mehr! 🏆";
-    const accessoriesHTML = state.accessories.map((a) => `
-      <span class="companion-acc${a.earned ? " earned" : ""}" title="${esc(a.title)}${a.earned ? "" : " (noch nicht freigeschaltet)"}">${a.emoji}</span>
-    `).join("");
+
+    const wornHTML = state.slots.map((slot) => {
+      const item = state.equipped[slot.key];
+      return `<span class="companion-acc${item ? " earned" : ""}" title="${esc(slot.label)}${item ? ": " + esc(item.title) : " (nichts ausgestattet)"}">${item ? item.emoji : "➖"}</span>`;
+    }).join("");
+
+    const wardrobeHTML = state.slots.map((slot) => {
+      const equippedItem = state.equipped[slot.key];
+      const equippedKey = equippedItem ? equippedItem.key : null;
+      const itemsHTML = slot.items.map((it) => {
+        const cls = ["wardrobe-item"];
+        if (!it.earned) cls.push("locked");
+        if (it.key === equippedKey) cls.push("selected");
+        const missing = Math.max(0, it.threshold - (state.unlockStats[slot.stat] || 0));
+        const hint = it.earned ? it.title : `Noch ${missing} ${slot.statLabel} bis „${it.title}"`;
+        return `
+          <button type="button" class="${cls.join(" ")}" data-equip-slot="${slot.key}" data-equip-item="${it.key}" ${it.earned ? "" : "disabled"} title="${esc(hint)}">
+            <span class="wardrobe-item-emoji">${it.earned ? it.emoji : "🔒"}</span>
+            <span class="wardrobe-item-title">${esc(it.title)}</span>
+          </button>
+        `;
+      }).join("");
+      const noneCls = ["wardrobe-item", "wardrobe-none"];
+      if (!equippedKey) noneCls.push("selected");
+      return `
+        <div class="wardrobe-slot">
+          <div class="wardrobe-slot-label">${esc(slot.label)}</div>
+          <div class="wardrobe-slot-items">
+            <button type="button" class="${noneCls.join(" ")}" data-equip-slot="${slot.key}" data-equip-item="none" title="Nichts tragen">
+              <span class="wardrobe-item-emoji">➖</span>
+              <span class="wardrobe-item-title">Ohne</span>
+            </button>
+            ${itemsHTML}
+          </div>
+        </div>
+      `;
+    }).join("");
+
     return `
       <div class="card companion-card">
         <div class="companion-row">
@@ -1237,9 +1422,34 @@
             <div class="companion-mood">${esc(moodText)}</div>
           </div>
         </div>
-        <div class="companion-accessories">${accessoriesHTML}</div>
+        <div class="companion-accessories">${wornHTML}</div>
+        <button type="button" class="companion-wardrobe-toggle" id="companionWardrobeToggle">🎨 Giraffe ausstatten${companionWardrobeOpen ? " ▲" : " ▼"}</button>
+        <div class="companion-wardrobe" id="companionWardrobe" ${companionWardrobeOpen ? "" : "hidden"}>
+          <div class="small muted companion-wardrobe-hint">Wähle pro Kategorie, was deine Giraffe tragen soll – nur Freigeschaltetes ist wählbar.</div>
+          ${wardrobeHTML}
+        </div>
       </div>
     `;
+  }
+
+  function bindCompanionWardrobe() {
+    const toggleBtn = document.getElementById("companionWardrobeToggle");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", () => {
+        companionWardrobeOpen = !companionWardrobeOpen;
+        renderHeute();
+      });
+    }
+    document.querySelectorAll("[data-equip-slot]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        const slot = btn.getAttribute("data-equip-slot");
+        const item = btn.getAttribute("data-equip-item");
+        Storage.setEquippedAccessory(slot, item);
+        companionWardrobeOpen = true;
+        renderHeute();
+      });
+    });
   }
 
   /* Einfacher, deterministischer String-Hash (djb2) – dient dazu, aus
@@ -1339,6 +1549,7 @@
       <div id="heuteEditor"></div>
     `;
     checkCompanionAccessoryUnlocks(companionState);
+    bindCompanionWardrobe();
     if (chaos) {
       const chaosCheck = document.getElementById("chaosCheck");
       if (chaosCheck) {
