@@ -1427,6 +1427,7 @@
         <div class="companion-wardrobe" id="companionWardrobe" ${companionWardrobeOpen ? "" : "hidden"}>
           <div class="small muted companion-wardrobe-hint">Wähle pro Kategorie, was deine Giraffe tragen soll – nur Freigeschaltetes ist wählbar.</div>
           ${wardrobeHTML}
+          <button type="button" class="btn btn-ghost btn-sm btn-block companion-wardrobe-close" id="companionWardrobeClose">Fertig – Garderobe schließen ✕</button>
         </div>
       </div>
     `;
@@ -1437,6 +1438,13 @@
     if (toggleBtn) {
       toggleBtn.addEventListener("click", () => {
         companionWardrobeOpen = !companionWardrobeOpen;
+        renderHeute();
+      });
+    }
+    const closeBtn = document.getElementById("companionWardrobeClose");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        companionWardrobeOpen = false;
         renderHeute();
       });
     }
