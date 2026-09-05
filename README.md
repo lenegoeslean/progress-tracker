@@ -510,6 +510,8 @@ echte Gewohnheiten wächst statt nur eine Statistik zu optimieren.
   Wachstumsstufe im Heute-Tab und wird in allen Texten der App
   verwendet (Feier-Hinweise, Garderobe-Button, Quests, Wochenbrief,
   Meine Reise).
+- **Drei wählbare Begleiter statt nur einer Giraffe** – siehe Abschnitt
+  40 für Bärls und Sharky als Alternativen.
 
 ## 30. Datenkunst-Generator
 
@@ -713,6 +715,29 @@ Trends-Tab hin- und herspringen musstest:
 Auch hier: alles wird live aus den bereits vorhandenen Daten
 berechnet, es wird nichts zusätzlich gespeichert – die Zeitleiste
 füllt sich einfach von selbst, je mehr du die App nutzt.
+
+## 40. Begleiter wechseln: Giraffi, Bärls oder Sharky
+
+Unter Einstellungen → 🐾 Begleiter lässt sich jetzt auswählen, welches
+Tier dich durch die App begleitet:
+
+- **Giraffi** 🦒 (Standard), **Bärls** 🐻 oder **Sharky** 🦈 – ein Tipp auf
+  eine der drei Karten wechselt sofort um, mit kurzer Bestätigung per
+  Toast.
+- **Der gesamte Fortschritt bleibt beim Wechseln erhalten**: Wachstumsstufe
+  (berechnet aus denselben aktiven Tagen), alle freigeschalteten
+  Garderobe-Stufen in allen 7 Kategorien, die eigene Wahl in der
+  Ausstatten-Ansicht und die gesammelte Quest-XP gelten für alle drei
+  Tiere gleichermaßen – es geht nichts verloren, nur Aussehen und Name
+  ändern sich.
+- Jedes Tier hat eigene, passend angepasste **Wachstumsstufen-Bezeichnungen**
+  (z. B. "Junger Bär" / "Junger Hai" statt "Junge Giraffe") und eine
+  komplett eigene Zeichnung inklusive Krone für die höchste Stufe – die
+  Accessoires aus der Garderobe (Blume, Kopfschmuck, Halsschmuck, Brille,
+  Schal, Medaille, Quest-Abzeichen) werden dabei auf die passende Stelle
+  am jeweiligen Tier übertragen.
+- Der gewählte Begleiter erscheint überall dort, wo bisher nur Giraffi
+  auftauchte: Heute-Tab, Wochen-Quests, Wochenbrief und "Meine Reise".
 
 ## Mögliche nächste Schritte
 

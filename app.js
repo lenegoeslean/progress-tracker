@@ -389,7 +389,7 @@
         theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
         weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
         targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS, chaosMode: true,
-        seenAccessoryKeys: [], equippedAccessories: {}
+        seenAccessoryKeys: [], equippedAccessories: {}, companionSpecies: "giraffe"
       }, data.settings);
     },
     saveSettings(patch) {
@@ -536,6 +536,12 @@
   }
   function esc(str) {
     return String(str == null ? "" : str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  /* Deutscher Genitiv: Namen, die schon auf s/x/z/ß enden ("Bärls"),
+     bekommen nur einen Apostroph statt eines zweiten "s" ("Bärls'
+     Quests" statt "Bärlss Quests"). */
+  function possessive(name) {
+    return /[sxzß]$/i.test(name) ? `${name}'` : `${name}s`;
   }
   let toastTimer;
   function showToast(msg) {
@@ -1047,14 +1053,47 @@
   /* Daten abgeleitet, keine eigene Speicherung nötig.                  */
   /* ---------------------------------------------------------------- */
 
-  const COMPANION_NAME = "Giraffi";
-
-  const COMPANION_STAGES = [
-    { min: 0, key: "baby", label: "Baby-Giraffe", size: 118, spots: 3 },
-    { min: 7, key: "young", label: "Junge Giraffe", size: 140, spots: 5 },
-    { min: 30, key: "adult", label: "Erwachsene Giraffe", size: 160, spots: 7 },
-    { min: 100, key: "majestic", label: "Stolze Giraffe", size: 176, spots: 9, crown: true }
+  /* Drei wählbare Begleiter-Arten, umschaltbar in den Einstellungen.
+     Der eigene Name (COMPANION_NAME-Ersatz: species.name) ist reine
+     Anzeigesache – Wachstumsstufen, Freischaltungen und Garderobe
+     basieren weiterhin auf denselben, ohnehin berechneten Werten und
+     sind über alle drei Begleiter hinweg identisch (nur die Zeichnung
+     und der Name ändern sich beim Umschalten, kein Fortschritt geht
+     verloren). */
+  const COMPANION_SPECIES = [
+    {
+      key: "giraffe", name: "Giraffi", emoji: "🦒",
+      stages: [
+        { min: 0, key: "baby", label: "Baby-Giraffe", size: 118, spots: 3 },
+        { min: 7, key: "young", label: "Junge Giraffe", size: 140, spots: 5 },
+        { min: 30, key: "adult", label: "Erwachsene Giraffe", size: 160, spots: 7 },
+        { min: 100, key: "majestic", label: "Stolze Giraffe", size: 176, spots: 9, crown: true }
+      ]
+    },
+    {
+      key: "bear", name: "Bärls", emoji: "🐻",
+      stages: [
+        { min: 0, key: "baby", label: "Baby-Bär", size: 122 },
+        { min: 7, key: "young", label: "Junger Bär", size: 140 },
+        { min: 30, key: "adult", label: "Erwachsener Bär", size: 158 },
+        { min: 100, key: "majestic", label: "Stolzer Bär", size: 172, crown: true }
+      ]
+    },
+    {
+      key: "shark", name: "Sharky", emoji: "🦈",
+      stages: [
+        { min: 0, key: "baby", label: "Baby-Hai", size: 122 },
+        { min: 7, key: "young", label: "Junger Hai", size: 140 },
+        { min: 30, key: "adult", label: "Erwachsener Hai", size: 158 },
+        { min: 100, key: "majestic", label: "Stolzer Hai", size: 172, crown: true }
+      ]
+    }
   ];
+
+  function getActiveSpecies() {
+    const key = Storage.getSettings().companionSpecies || "giraffe";
+    return COMPANION_SPECIES.find((s) => s.key === key) || COMPANION_SPECIES[0];
+  }
 
   /* Jeder Ausrüstungs-Platz ("Slot") an der Giraffe hat mehrere Stufen
      ("Tiers"), die nacheinander anhand echter, ohnehin schon berechneter
@@ -1258,7 +1297,7 @@
     }).join("");
 
     return `
-      <h2 class="section-title">🎯 ${esc(COMPANION_NAME)}s Quests der Woche</h2>
+      <h2 class="section-title">🎯 ${esc(possessive(getActiveSpecies().name))} Quests der Woche</h2>
       <div class="card quest-card">
         <div class="quest-list">${rows}</div>
         <div class="row-between small muted quest-xp-total" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
@@ -1313,10 +1352,12 @@
 
   function computeCompanionState() {
     const streaks = computeStreaks();
-    let stage = COMPANION_STAGES[0];
-    COMPANION_STAGES.forEach((s) => { if (streaks.totalActiveDays >= s.min) stage = s; });
-    const stageIdx = COMPANION_STAGES.indexOf(stage);
-    const next = COMPANION_STAGES[stageIdx + 1] || null;
+    const species = getActiveSpecies();
+    const stages = species.stages;
+    let stage = stages[0];
+    stages.forEach((s) => { if (streaks.totalActiveDays >= s.min) stage = s; });
+    const stageIdx = stages.indexOf(stage);
+    const next = stages[stageIdx + 1] || null;
 
     const todayISO = toISO(new Date());
     const t = Storage.getEntry(todayISO);
@@ -1336,7 +1377,7 @@
     }));
     const equipped = resolveEquippedAccessories(unlockStats, chosen);
 
-    return { stage, next, mood, slots, equipped, unlockStats, totalActiveDays: streaks.totalActiveDays, currentStreak: streaks.current };
+    return { species, stage, next, mood, slots, equipped, unlockStats, totalActiveDays: streaks.totalActiveDays, currentStreak: streaks.current };
   }
 
   const COMPANION_SPOT_POSITIONS_NORMAL = [
@@ -1394,16 +1435,37 @@
      zu den Flecken oben. Kopfschmuck entfällt, sobald ohnehin schon die
      Krone der "Stolzen Giraffe" sitzt (beides am Kopf, würde sich sonst
      überlagern – die Krone gewinnt als höchste Stufe). */
-  function buildCompanionAccessoriesSVG(equipped, isBaby, hasCrown) {
+  /* Anker-Offsets für die Giraffe (Standard) – reproduzieren exakt die
+     bisherigen fest verdrahteten Koordinaten, also 0-Deltas für alle
+     Positionen, die schon absolut passend gezeichnet sind. */
+  function giraffeAccessoryAnchors(isBaby) {
+    return {
+      ohr: isBaby ? [66, 84] : [70, 28],
+      kopfDelta: [0, 0],
+      bandanaDelta: [0, 0],
+      brilleDelta: [0, 0],
+      schalDelta: [0, 0],
+      medailleDelta: [0, 0],
+      abzeichen: isBaby ? [74, 120] : [74, 64]
+    };
+  }
+
+  /* Zeichnet die freigeschalteten Accessoires. "anchors" verschiebt die
+     (immer gleich gezeichneten) Accessoire-Formen an die passende Stelle
+     der jeweiligen Tierart – so lässt sich derselbe Accessoire-Satz für
+     Giraffi, Bärls und Sharky wiederverwenden, ohne jedes einzelne Teil
+     für jede Tierart neu zeichnen zu müssen. */
+  function buildCompanionAccessoriesSVG(equipped, isBaby, hasCrown, anchors) {
     let body = "";
     let face = "";
+    const A = anchors || giraffeAccessoryAnchors(isBaby);
     const ohr = equipped.ohr, kopf = equipped.kopf, bandana = equipped.bandana,
       brille = equipped.brille, schal = equipped.schal, medaille = equipped.medaille,
       abzeichen = equipped.abzeichen;
 
     // --- Ohr: Blüte / Kleeblatt / Schmetterling -----------------------
     if (ohr) {
-      const [ox, oy] = isBaby ? [66, 84] : [70, 28];
+      const [ox, oy] = A.ohr;
       if (ohr.key === "flower") {
         const r = isBaby ? 3.4 : 3.2, rc = isBaby ? 3 : 2.8;
         body += `<g transform="translate(${ox} ${oy})">
@@ -1434,59 +1496,71 @@
 
     // --- Kopf: Käppi / Zylinder / Partyhut (weicht der Krone) ----------
     if (!hasCrown && kopf) {
+      const [kdx, kdy] = A.kopfDelta;
+      let piece = "";
       if (isBaby) {
-        if (kopf.key === "cap") body += `<g><path d="M84,70 Q100,52 116,70 Z" fill="#5B8DEF"/><rect x="82" y="69" width="36" height="4" rx="2" fill="#3E6FD9"/></g>`;
-        else if (kopf.key === "hat") body += `<g><rect x="88" y="58" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="70" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="66" width="24" height="3" fill="#B5495A"/></g>`;
-        else if (kopf.key === "partyhat") body += `<g><path d="M100,48 L88,72 L112,72 Z" fill="#FF6FA5"/><path d="M100,48 L96,60 L104,60 Z" fill="#FFD166"/><circle cx="100" cy="46" r="3.5" fill="#F2C94C"/><rect x="86" y="70" width="28" height="3" rx="1.5" fill="#E23E76"/></g>`;
+        if (kopf.key === "cap") piece = `<path d="M84,70 Q100,52 116,70 Z" fill="#5B8DEF"/><rect x="82" y="69" width="36" height="4" rx="2" fill="#3E6FD9"/>`;
+        else if (kopf.key === "hat") piece = `<rect x="88" y="58" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="70" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="66" width="24" height="3" fill="#B5495A"/>`;
+        else if (kopf.key === "partyhat") piece = `<path d="M100,48 L88,72 L112,72 Z" fill="#FF6FA5"/><path d="M100,48 L96,60 L104,60 Z" fill="#FFD166"/><circle cx="100" cy="46" r="3.5" fill="#F2C94C"/><rect x="86" y="70" width="28" height="3" rx="1.5" fill="#E23E76"/>`;
       } else {
-        if (kopf.key === "cap") body += `<g><path d="M84,14 Q100,-4 116,14 Z" fill="#5B8DEF"/><rect x="82" y="13" width="36" height="4" rx="2" fill="#3E6FD9"/></g>`;
-        else if (kopf.key === "hat") body += `<g><rect x="88" y="2" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="14" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="10" width="24" height="3" fill="#B5495A"/></g>`;
-        else if (kopf.key === "partyhat") body += `<g><path d="M100,-8 L88,16 L112,16 Z" fill="#FF6FA5"/><path d="M100,-8 L96,4 L104,4 Z" fill="#FFD166"/><circle cx="100" cy="-10" r="3.5" fill="#F2C94C"/><rect x="86" y="14" width="28" height="3" rx="1.5" fill="#E23E76"/></g>`;
+        if (kopf.key === "cap") piece = `<path d="M84,14 Q100,-4 116,14 Z" fill="#5B8DEF"/><rect x="82" y="13" width="36" height="4" rx="2" fill="#3E6FD9"/>`;
+        else if (kopf.key === "hat") piece = `<rect x="88" y="2" width="24" height="14" rx="2" fill="#3E2723"/><rect x="83" y="14" width="34" height="4" rx="2" fill="#3E2723"/><rect x="88" y="10" width="24" height="3" fill="#B5495A"/>`;
+        else if (kopf.key === "partyhat") piece = `<path d="M100,-8 L88,16 L112,16 Z" fill="#FF6FA5"/><path d="M100,-8 L96,4 L104,4 Z" fill="#FFD166"/><circle cx="100" cy="-10" r="3.5" fill="#F2C94C"/><rect x="86" y="14" width="28" height="3" rx="1.5" fill="#E23E76"/>`;
       }
+      if (piece) body += `<g transform="translate(${kdx},${kdy})">${piece}</g>`;
     }
 
     // --- Hals oben: Bandana / Fliege / Glitzer-Halsband -----------------
     if (bandana) {
+      const [bdx, bdy] = A.bandanaDelta;
+      let piece = "";
       if (isBaby) {
-        if (bandana.key === "bandana") body += `<g><path d="M100,112 L86,104 L86,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,112 L114,104 L114,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="112" r="4.5" fill="#E23E76"/></g>`;
-        else if (bandana.key === "bowtie") body += `<g><path d="M100,112 L88,106 L88,118 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><path d="M100,112 L112,106 L112,118 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><rect x="97" y="108" width="6" height="8" rx="1.5" fill="#3E6FD9"/></g>`;
-        else if (bandana.key === "sparklecollar") body += `<g><ellipse cx="100" cy="112" rx="15" ry="6" fill="none" stroke="#F2C94C" stroke-width="3"/><circle cx="86" cy="110" r="1.6" fill="#FFF6D9"/><circle cx="114" cy="110" r="1.6" fill="#FFF6D9"/><circle cx="100" cy="118" r="1.6" fill="#FFF6D9"/></g>`;
+        if (bandana.key === "bandana") piece = `<path d="M100,112 L86,104 L86,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,112 L114,104 L114,120 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="112" r="4.5" fill="#E23E76"/>`;
+        else if (bandana.key === "bowtie") piece = `<path d="M100,112 L88,106 L88,118 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><path d="M100,112 L112,106 L112,118 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><rect x="97" y="108" width="6" height="8" rx="1.5" fill="#3E6FD9"/>`;
+        else if (bandana.key === "sparklecollar") piece = `<ellipse cx="100" cy="112" rx="15" ry="6" fill="none" stroke="#F2C94C" stroke-width="3"/><circle cx="86" cy="110" r="1.6" fill="#FFF6D9"/><circle cx="114" cy="110" r="1.6" fill="#FFF6D9"/><circle cx="100" cy="118" r="1.6" fill="#FFF6D9"/>`;
       } else {
-        if (bandana.key === "bandana") body += `<g><path d="M100,56 L88,49 L88,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,56 L112,49 L112,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="56" r="4" fill="#E23E76"/></g>`;
-        else if (bandana.key === "bowtie") body += `<g><path d="M100,56 L88,50 L88,62 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><path d="M100,56 L112,50 L112,62 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><rect x="97" y="52" width="6" height="8" rx="1.5" fill="#3E6FD9"/></g>`;
-        else if (bandana.key === "sparklecollar") body += `<g><ellipse cx="100" cy="56" rx="15" ry="6" fill="none" stroke="#F2C94C" stroke-width="3"/><circle cx="86" cy="54" r="1.6" fill="#FFF6D9"/><circle cx="114" cy="54" r="1.6" fill="#FFF6D9"/><circle cx="100" cy="62" r="1.6" fill="#FFF6D9"/></g>`;
+        if (bandana.key === "bandana") piece = `<path d="M100,56 L88,49 L88,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><path d="M100,56 L112,49 L112,63 Z" fill="#FF6FA5" stroke="#D6488B" stroke-width="1"/><circle cx="100" cy="56" r="4" fill="#E23E76"/>`;
+        else if (bandana.key === "bowtie") piece = `<path d="M100,56 L88,50 L88,62 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><path d="M100,56 L112,50 L112,62 Z" fill="#5B8DEF" stroke="#3E6FD9" stroke-width="1"/><rect x="97" y="52" width="6" height="8" rx="1.5" fill="#3E6FD9"/>`;
+        else if (bandana.key === "sparklecollar") piece = `<ellipse cx="100" cy="56" rx="15" ry="6" fill="none" stroke="#F2C94C" stroke-width="3"/><circle cx="86" cy="54" r="1.6" fill="#FFF6D9"/><circle cx="114" cy="54" r="1.6" fill="#FFF6D9"/><circle cx="100" cy="62" r="1.6" fill="#FFF6D9"/>`;
       }
+      if (piece) body += `<g transform="translate(${bdx},${bdy})">${piece}</g>`;
     }
 
     // --- Schal: Schal / Winterschal / Regenbogenschal -------------------
     if (schal) {
+      const [sdx, sdy] = A.schalDelta;
+      let piece = "";
       if (isBaby) {
-        if (schal.key === "scarf") body += `<g fill="#8C4FC9"><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z"/><path d="M92,148 L89,178 L96,178 L98,150 Z"/><path d="M108,148 L111,174 L104,174 L102,150 Z"/></g>`;
-        else if (schal.key === "winterscarf") body += `<g><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z" fill="#2F9E9E"/><path d="M92,148 L89,178 L96,178 L98,150 Z" fill="#2F9E9E"/><path d="M108,148 L111,174 L104,174 L102,150 Z" fill="#2F9E9E"/><rect x="90" y="155" width="6" height="4" fill="#fff" opacity="0.6"/><rect x="106" y="155" width="6" height="4" fill="#fff" opacity="0.6"/></g>`;
-        else if (schal.key === "rainbowscarf") body += `<g><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z" fill="#FF6FA5"/><path d="M92,148 L89,163 L96,163 L97,150 Z" fill="#FFD166"/><path d="M92,163 L89,178 L96,178 L96,163 Z" fill="#5B8DEF"/><path d="M108,148 L111,161 L104,161 L102,150 Z" fill="#7CB369"/><path d="M108,161 L111,174 L104,174 L104,161 Z" fill="#B98CE0"/></g>`;
+        if (schal.key === "scarf") piece = `<g fill="#8C4FC9"><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z"/><path d="M92,148 L89,178 L96,178 L98,150 Z"/><path d="M108,148 L111,174 L104,174 L102,150 Z"/></g>`;
+        else if (schal.key === "winterscarf") piece = `<g><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z" fill="#2F9E9E"/><path d="M92,148 L89,178 L96,178 L98,150 Z" fill="#2F9E9E"/><path d="M108,148 L111,174 L104,174 L102,150 Z" fill="#2F9E9E"/><rect x="90" y="155" width="6" height="4" fill="#fff" opacity="0.6"/><rect x="106" y="155" width="6" height="4" fill="#fff" opacity="0.6"/></g>`;
+        else if (schal.key === "rainbowscarf") piece = `<g><path d="M87,140 Q100,152 113,140 L113,150 Q100,162 87,150 Z" fill="#FF6FA5"/><path d="M92,148 L89,163 L96,163 L97,150 Z" fill="#FFD166"/><path d="M92,163 L89,178 L96,178 L96,163 Z" fill="#5B8DEF"/><path d="M108,148 L111,161 L104,161 L102,150 Z" fill="#7CB369"/><path d="M108,161 L111,174 L104,174 L104,161 Z" fill="#B98CE0"/></g>`;
       } else {
-        if (schal.key === "scarf") body += `<g fill="#8C4FC9"><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z"/><path d="M90,108 L86,146 L94,146 L96,110 Z"/><path d="M110,108 L114,140 L106,140 L104,110 Z"/></g>`;
-        else if (schal.key === "winterscarf") body += `<g><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z" fill="#2F9E9E"/><path d="M90,108 L86,146 L94,146 L96,110 Z" fill="#2F9E9E"/><path d="M110,108 L114,140 L106,140 L104,110 Z" fill="#2F9E9E"/><rect x="88" y="115" width="6" height="4" fill="#fff" opacity="0.6"/><rect x="108" y="115" width="6" height="4" fill="#fff" opacity="0.6"/></g>`;
-        else if (schal.key === "rainbowscarf") body += `<g><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z" fill="#FF6FA5"/><path d="M90,108 L86,127 L94,127 L95,110 Z" fill="#FFD166"/><path d="M90,127 L86,146 L94,146 L94,127 Z" fill="#5B8DEF"/><path d="M110,108 L114,125 L106,125 L104,110 Z" fill="#7CB369"/><path d="M110,125 L114,140 L106,140 L106,125 Z" fill="#B98CE0"/></g>`;
+        if (schal.key === "scarf") piece = `<g fill="#8C4FC9"><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z"/><path d="M90,108 L86,146 L94,146 L96,110 Z"/><path d="M110,108 L114,140 L106,140 L104,110 Z"/></g>`;
+        else if (schal.key === "winterscarf") piece = `<g><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z" fill="#2F9E9E"/><path d="M90,108 L86,146 L94,146 L96,110 Z" fill="#2F9E9E"/><path d="M110,108 L114,140 L106,140 L104,110 Z" fill="#2F9E9E"/><rect x="88" y="115" width="6" height="4" fill="#fff" opacity="0.6"/><rect x="108" y="115" width="6" height="4" fill="#fff" opacity="0.6"/></g>`;
+        else if (schal.key === "rainbowscarf") piece = `<g><path d="M84,98 Q100,112 116,98 L116,110 Q100,124 84,110 Z" fill="#FF6FA5"/><path d="M90,108 L86,127 L94,127 L95,110 Z" fill="#FFD166"/><path d="M90,127 L86,146 L94,146 L94,127 Z" fill="#5B8DEF"/><path d="M110,108 L114,125 L106,125 L104,110 Z" fill="#7CB369"/><path d="M110,125 L114,140 L106,140 L106,125 Z" fill="#B98CE0"/></g>`;
       }
+      if (piece) body += `<g transform="translate(${sdx},${sdy})">${piece}</g>`;
     }
 
     // --- Medaille: Bronze / Gold / Pokal (Brustbereich) -----------------
     if (medaille) {
+      const [mdx, mdy] = A.medailleDelta;
+      let piece = "";
       if (isBaby) {
-        if (medaille.key === "bronze") body += `<g><path d="M95,166 L100,179 L105,166" stroke="#8899C9" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="100" cy="183" r="6" fill="#C97A4C" stroke="#A5613A" stroke-width="1.3"/></g>`;
-        else if (medaille.key === "gold") body += `<g><path d="M94,164 L100,180 L106,164" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="185" r="7.5" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="185" r="3.7" fill="#FFF6D9"/></g>`;
-        else if (medaille.key === "trophy") body += `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,164 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="176" width="6" height="6"/><rect x="92" y="182" width="16" height="4" rx="1.5"/><path d="M92,166 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,166 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
+        if (medaille.key === "bronze") piece = `<path d="M95,166 L100,179 L105,166" stroke="#8899C9" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="100" cy="183" r="6" fill="#C97A4C" stroke="#A5613A" stroke-width="1.3"/>`;
+        else if (medaille.key === "gold") piece = `<path d="M94,164 L100,180 L106,164" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="185" r="7.5" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="185" r="3.7" fill="#FFF6D9"/>`;
+        else if (medaille.key === "trophy") piece = `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,164 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="176" width="6" height="6"/><rect x="92" y="182" width="16" height="4" rx="1.5"/><path d="M92,166 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,166 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
       } else {
-        if (medaille.key === "bronze") body += `<g><path d="M95,142 L100,157 L105,142" stroke="#8899C9" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="100" cy="161" r="6.5" fill="#C97A4C" stroke="#A5613A" stroke-width="1.3"/></g>`;
-        else if (medaille.key === "gold") body += `<g><path d="M94,140 L100,158 L106,140" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="163" r="8" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="163" r="4" fill="#FFF6D9"/></g>`;
-        else if (medaille.key === "trophy") body += `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,140 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="152" width="6" height="6"/><rect x="92" y="158" width="16" height="4" rx="1.5"/><path d="M92,142 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,142 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
+        if (medaille.key === "bronze") piece = `<path d="M95,142 L100,157 L105,142" stroke="#8899C9" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="100" cy="161" r="6.5" fill="#C97A4C" stroke="#A5613A" stroke-width="1.3"/>`;
+        else if (medaille.key === "gold") piece = `<path d="M94,140 L100,158 L106,140" stroke="#5A64B0" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="100" cy="163" r="8" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/><circle cx="100" cy="163" r="4" fill="#FFF6D9"/>`;
+        else if (medaille.key === "trophy") piece = `<g fill="#F2C94C" stroke="#D9A824" stroke-width="1"><path d="M92,140 h16 v6 a8,8 0 0 1 -16,0 Z"/><rect x="97" y="152" width="6" height="6"/><rect x="92" y="158" width="16" height="4" rx="1.5"/><path d="M92,142 q-6,0 -6,6 q0,5 6,5" fill="none" stroke-width="2"/><path d="M108,142 q6,0 6,6 q0,5 -6,5" fill="none" stroke-width="2"/></g>`;
       }
+      if (piece) body += `<g transform="translate(${mdx},${mdy})">${piece}</g>`;
     }
 
     // --- Quest-Abzeichen: Bronze/Silber/Gold-Stern an der Schulter ------
     if (abzeichen) {
-      const [ax, ay] = isBaby ? [74, 120] : [74, 64];
+      const [ax, ay] = A.abzeichen;
       const colors = { bronze_badge: ["#C97A4C", "#A5613A"], silver_badge: ["#C7CDD6", "#9AA3AF"], gold_badge: ["#F2C94C", "#D9A824"] };
       const [fill, stroke] = colors[abzeichen.key] || colors.bronze_badge;
       body += `<g>${starSVG(ax, ay, isBaby ? 5.5 : 5, fill, stroke)}</g>`;
@@ -1494,28 +1568,31 @@
 
     // --- Brille: Sonnenbrille / Herzbrille / Sternbrille (auf dem Gesicht) --
     if (brille) {
+      const [grdx, grdy] = A.brilleDelta;
+      let piece = "";
       if (isBaby) {
-        if (brille.key === "sunglasses") face += `<g><rect x="85" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="102" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/><line x1="83" y1="99.5" x2="85" y2="101" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="115" y1="101" x2="117" y2="99.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="86" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
-        else if (brille.key === "heartglasses") face += `<g fill="#FF6FA5"><path d="M91.5,105 C85,100 88,94 91.5,97 C95,94 98,100 91.5,105 Z"/><path d="M108.5,105 C102,100 105,94 108.5,97 C112,94 115,100 108.5,105 Z"/></g>`;
-        else if (brille.key === "starglasses") face += `<g><circle cx="91.5" cy="101.5" r="6.5" fill="#FFF3B0" opacity="0.9"/><circle cx="108.5" cy="101.5" r="6.5" fill="#FFF3B0" opacity="0.9"/><path d="M91.5,95 L93,100 L98,101.5 L93,103 L91.5,108 L90,103 L85,101.5 L90,100 Z" fill="#F2C94C"/><path d="M108.5,95 L110,100 L115,101.5 L110,103 L108.5,108 L107,103 L102,101.5 L107,100 Z" fill="#F2C94C"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/></g>`;
+        if (brille.key === "sunglasses") piece = `<g><rect x="85" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="102" y="96.5" width="13" height="9.5" rx="3.7" fill="#2B2B2B"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/><line x1="83" y1="99.5" x2="85" y2="101" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="115" y1="101" x2="117" y2="99.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="86" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="98.5" width="11" height="4.2" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+        else if (brille.key === "heartglasses") piece = `<g fill="#FF6FA5"><path d="M91.5,105 C85,100 88,94 91.5,97 C95,94 98,100 91.5,105 Z"/><path d="M108.5,105 C102,100 105,94 108.5,97 C112,94 115,100 108.5,105 Z"/></g>`;
+        else if (brille.key === "starglasses") piece = `<g><circle cx="91.5" cy="101.5" r="6.5" fill="#FFF3B0" opacity="0.9"/><circle cx="108.5" cy="101.5" r="6.5" fill="#FFF3B0" opacity="0.9"/><path d="M91.5,95 L93,100 L98,101.5 L93,103 L91.5,108 L90,103 L85,101.5 L90,100 Z" fill="#F2C94C"/><path d="M108.5,95 L110,100 L115,101.5 L110,103 L108.5,108 L107,103 L102,101.5 L107,100 Z" fill="#F2C94C"/><rect x="98" y="99.2" width="4" height="2.5" fill="#2B2B2B"/></g>`;
       } else {
-        if (brille.key === "sunglasses") face += `<g><rect x="86" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="102" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="98" y="43.5" width="4" height="2.4" fill="#2B2B2B"/><line x1="84" y1="44" x2="86" y2="45.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="114" y1="45.5" x2="116" y2="44" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="87" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
-        else if (brille.key === "heartglasses") face += `<g fill="#FF6FA5"><path d="M92,49 C86,44 89,38 92,41 C95,38 98,44 92,49 Z"/><path d="M108,49 C102,44 105,38 108,41 C111,38 114,44 108,49 Z"/></g>`;
-        else if (brille.key === "starglasses") face += `<g><circle cx="92" cy="45.5" r="6" fill="#FFF3B0" opacity="0.9"/><circle cx="108" cy="45.5" r="6" fill="#FFF3B0" opacity="0.9"/><path d="M92,39 L93.3,44 L98,45.5 L93.3,47 L92,52 L90.7,47 L86,45.5 L90.7,44 Z" fill="#F2C94C"/><path d="M108,39 L109.3,44 L114,45.5 L109.3,47 L108,52 L106.7,47 L102,45.5 L106.7,44 Z" fill="#F2C94C"/><rect x="98" y="43.2" width="4" height="2.5" fill="#2B2B2B"/></g>`;
+        if (brille.key === "sunglasses") piece = `<g><rect x="86" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="102" y="41" width="12" height="9" rx="3.5" fill="#2B2B2B"/><rect x="98" y="43.5" width="4" height="2.4" fill="#2B2B2B"/><line x1="84" y1="44" x2="86" y2="45.5" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><line x1="114" y1="45.5" x2="116" y2="44" stroke="#2B2B2B" stroke-width="1.4" stroke-linecap="round"/><rect x="87" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/><rect x="103" y="43" width="10" height="4" rx="2" fill="#5B7FBF" opacity="0.5"/></g>`;
+        else if (brille.key === "heartglasses") piece = `<g fill="#FF6FA5"><path d="M92,49 C86,44 89,38 92,41 C95,38 98,44 92,49 Z"/><path d="M108,49 C102,44 105,38 108,41 C111,38 114,44 108,49 Z"/></g>`;
+        else if (brille.key === "starglasses") piece = `<g><circle cx="92" cy="45.5" r="6" fill="#FFF3B0" opacity="0.9"/><circle cx="108" cy="45.5" r="6" fill="#FFF3B0" opacity="0.9"/><path d="M92,39 L93.3,44 L98,45.5 L93.3,47 L92,52 L90.7,47 L86,45.5 L90.7,44 Z" fill="#F2C94C"/><path d="M108,39 L109.3,44 L114,45.5 L109.3,47 L108,52 L106.7,47 L102,45.5 L106.7,44 Z" fill="#F2C94C"/><rect x="98" y="43.2" width="4" height="2.5" fill="#2B2B2B"/></g>`;
       }
+      if (piece) face += `<g transform="translate(${grdx},${grdy})">${piece}</g>`;
     }
 
     return { body, face };
   }
 
-  function buildCompanionSVG(stage, mood, equipped) {
+  function buildGiraffeSVG(stage, mood, equipped) {
     const isBaby = stage.key === "baby";
     const bodyColor = "#F6D9A6", darkColor = "#E0B679", spotColor = "#C97A3B", muzzleColor = "#FBEAD0";
     const spots = (isBaby ? COMPANION_SPOT_POSITIONS_BABY : COMPANION_SPOT_POSITIONS_NORMAL)
       .slice(0, stage.spots)
       .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="5" fill="${spotColor}" opacity="0.85"/>`)
       .join("");
-    const acc = buildCompanionAccessoriesSVG(equipped || {}, isBaby, !!stage.crown);
+    const acc = buildCompanionAccessoriesSVG(equipped || {}, isBaby, !!stage.crown, giraffeAccessoryAnchors(isBaby));
 
     if (isBaby) {
       return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
@@ -1566,6 +1643,79 @@
     </svg>`;
   }
 
+  /* Bärls und Sharky nutzen – anders als die Giraffe mit ihrem
+     wachsenden Hals – für alle vier Wachstumsstufen dieselbe Zeichnung
+     (nur Größe und Krone ändern sich), genau wie schon Giraffis eigene
+     Stufen "Junge/Erwachsene/Stolze Giraffe" untereinander eine
+     gemeinsame Vorlage teilen. Die Accessoire-Formen selbst werden 1:1
+     wiederverwendet, nur an eine passende Stelle auf dem jeweiligen
+     Körper verschoben (siehe Anker-Deltas unten). */
+  const BEAR_ACCESSORY_ANCHORS = {
+    ohr: [150, 46], kopfDelta: [0, 22], bandanaDelta: [0, 76], brilleDelta: [0, 54],
+    schalDelta: [0, 42], medailleDelta: [0, 45], abzeichen: [42, 158]
+  };
+
+  /* Bärls bekommt – anders als die erste Fassung, die nur eine einzige
+     große Kugel mit Ohren war – einen klar erkennbaren Kopf (eigene
+     Ellipse), der leicht auf dem Körper aufsitzt, dazu einen hellen
+     Bauch-Fleck wie beim Kuscheltier-Vorbild. */
+  function buildBearSVG(stage, mood, equipped) {
+    const bodyColor = "#8B5E3C", darkColor = "#6E4A2E", muzzleColor = "#E8C9A0";
+    const acc = buildCompanionAccessoriesSVG(equipped || {}, false, !!stage.crown, BEAR_ACCESSORY_ANCHORS);
+    return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
+      <ellipse cx="100" cy="216" rx="46" ry="5" fill="#000" opacity="0.06"/>
+      <ellipse cx="78" cy="207" rx="16" ry="12" fill="${darkColor}"/>
+      <ellipse cx="122" cy="207" rx="16" ry="12" fill="${darkColor}"/>
+      <ellipse cx="38" cy="163" rx="15" ry="21" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1" transform="rotate(14 38 163)"/>
+      <ellipse cx="162" cy="163" rx="15" ry="21" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1" transform="rotate(-14 162 163)"/>
+      <ellipse cx="100" cy="172" rx="54" ry="46" fill="${bodyColor}"/>
+      <ellipse cx="100" cy="188" rx="28" ry="24" fill="${muzzleColor}" opacity="0.3"/>
+      <ellipse cx="100" cy="96" rx="46" ry="42" fill="${bodyColor}"/>
+      <circle cx="62" cy="58" r="19" fill="${bodyColor}"/>
+      <circle cx="138" cy="58" r="19" fill="${bodyColor}"/>
+      <circle cx="62" cy="58" r="9.5" fill="${darkColor}"/>
+      <circle cx="138" cy="58" r="9.5" fill="${darkColor}"/>
+      <ellipse cx="100" cy="108" rx="28" ry="21" fill="${muzzleColor}"/>
+      <ellipse cx="100" cy="103" rx="7" ry="5" fill="${darkColor}"/>
+      ${stage.crown ? `<path d="M76,38 L84,20 L100,34 L116,20 L124,38 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      ${acc.body}
+      ${buildCompanionFaceSVG(100, 98, mood, 1)}
+      ${acc.face}
+    </svg>`;
+  }
+
+  const SHARK_ACCESSORY_ANCHORS = {
+    ohr: [152, 92], kopfDelta: [0, 66], bandanaDelta: [0, 84], brilleDelta: [0, 60],
+    schalDelta: [0, 22], medailleDelta: [0, 35], abzeichen: [54, 116]
+  };
+
+  function buildSharkSVG(stage, mood, equipped) {
+    const bodyColor = "#7FAFC9", darkColor = "#4F7B99", bellyColor = "#F0F8FC";
+    const acc = buildCompanionAccessoriesSVG(equipped || {}, false, !!stage.crown, SHARK_ACCESSORY_ANCHORS);
+    return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
+      <ellipse cx="100" cy="213" rx="44" ry="6" fill="#000" opacity="0.06"/>
+      <path d="M64,187 L86,187 L76,213 Z" fill="${darkColor}"/>
+      <path d="M136,187 L114,187 L124,213 Z" fill="${darkColor}"/>
+      <path d="M84,58 L98,16 L106,58 L116,50 L100,10 L84,50 Z" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M100,58 C144,58 168,92 165,132 C162,168 140,198 100,212 C60,198 38,168 35,132 C32,92 56,58 100,58 Z" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1.5"/>
+      <path d="M35,105 L4,88 L8,138 L38,148 Z" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M165,105 L196,88 L192,138 L162,148 Z" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M100,96 C132,96 148,120 146,150 C144,178 126,198 100,206 C74,198 56,178 54,150 C52,120 68,96 100,96 Z" fill="${bellyColor}"/>
+      <path d="M42,116 q7,4 1,10" stroke="${darkColor}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+      <path d="M158,116 q-7,4 -1,10" stroke="${darkColor}" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+      ${stage.crown ? `<path d="M78,46 L86,28 L100,42 L114,28 L122,46 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      ${acc.body}
+      ${buildCompanionFaceSVG(100, 104, mood, 1)}
+      ${acc.face}
+    </svg>`;
+  }
+
+  function buildCompanionSVG(species, stage, mood, equipped) {
+    if (species && species.key === "bear") return buildBearSVG(stage, mood, equipped);
+    if (species && species.key === "shark") return buildSharkSVG(stage, mood, equipped);
+    return buildGiraffeSVG(stage, mood, equipped);
+  }
+
   /* Feiert neu freigeschaltete Accessoires einmalig per Toast, statt sie
      nur still im Bild auftauchen zu lassen – merkt sich dafür, welche
      Accessoires schon "gesehen" wurden. */
@@ -1578,7 +1728,7 @@
     const newlyEarned = allItems.filter((it) => it.earned && !seen.includes(it.key));
     if (newlyEarned.length) {
       const names = newlyEarned.map((it) => `${it.emoji} ${it.title}`).join(", ");
-      showToast(`${COMPANION_NAME} hat ein neues Outfit bekommen: ${names}! 🎉`);
+      showToast(`${getActiveSpecies().name} hat ein neues Outfit bekommen: ${names}! 🎉`);
     }
     if (newlyEarned.length || seen.length !== earnedNow.length) {
       Storage.saveSettings({ seenAccessoryKeys: earnedNow });
@@ -1587,12 +1737,14 @@
 
   function buildCompanionHTML(precomputedState) {
     const state = precomputedState || computeCompanionState();
-    const svg = buildCompanionSVG(state.stage, state.mood, state.equipped);
+    const species = state.species || getActiveSpecies();
+    const name = species.name;
+    const svg = buildCompanionSVG(species, state.stage, state.mood, state.equipped);
     const moodText = state.mood === "happy"
-      ? `${COMPANION_NAME} freut sich – du warst heute schon aktiv! 🎉`
+      ? `${name} freut sich – du warst heute schon aktiv! 🎉`
       : state.mood === "sad"
         ? "Deine Streak ist gerissen – ein kleiner Schritt heute baut sie wieder auf."
-        : `${COMPANION_NAME} wartet gespannt auf deine erste Aktivität heute.`;
+        : `${name} wartet gespannt auf deine erste Aktivität heute.`;
     const nextText = state.next
       ? `Noch ${state.next.min - state.totalActiveDays} aktive Tage bis „${state.next.label}"`
       : "Höchste Stufe erreicht – mehr geht nicht mehr! 🏆";
@@ -1639,16 +1791,16 @@
         <div class="companion-row">
           <div class="companion-svg-wrap">${svg}</div>
           <div class="companion-info">
-            <div class="companion-name">${esc(COMPANION_NAME)}</div>
+            <div class="companion-name">${esc(name)}</div>
             <div class="companion-stage">${esc(state.stage.label)}</div>
             <div class="small muted">${esc(nextText)}</div>
             <div class="companion-mood">${esc(moodText)}</div>
           </div>
         </div>
         <div class="companion-accessories">${wornHTML}</div>
-        <button type="button" class="companion-wardrobe-toggle" id="companionWardrobeToggle">🎨 ${esc(COMPANION_NAME)} ausstatten${companionWardrobeOpen ? " ▲" : " ▼"}</button>
+        <button type="button" class="companion-wardrobe-toggle" id="companionWardrobeToggle">🎨 ${esc(name)} ausstatten${companionWardrobeOpen ? " ▲" : " ▼"}</button>
         <div class="companion-wardrobe" id="companionWardrobe" ${companionWardrobeOpen ? "" : "hidden"}>
-          <div class="small muted companion-wardrobe-hint">Wähle pro Kategorie, was ${esc(COMPANION_NAME)} tragen soll – nur Freigeschaltetes ist wählbar.</div>
+          <div class="small muted companion-wardrobe-hint">Wähle pro Kategorie, was ${esc(name)} tragen soll – nur Freigeschaltetes ist wählbar.</div>
           ${wardrobeHTML}
           <button type="button" class="btn btn-ghost btn-sm btn-block companion-wardrobe-close" id="companionWardrobeClose">Fertig – Garderobe schließen ✕</button>
         </div>
@@ -3733,8 +3885,9 @@
     if (w.stepsTotal > 0) parts.push(`Insgesamt bist du ${fmt(w.stepsTotal)} Schritte gelaufen${w.minutes > 0 ? ` und warst ${w.minutes} Minuten aktiv` : ""}.`);
     if (w.weightText) parts.push(w.weightText);
     parts.push(w.streakText);
-    parts.push(`Von ${COMPANION_NAME}s ${w.quests.length} Quests dieser Woche hast du ${w.questDone} geschafft.`);
-    parts.push(`${COMPANION_NAME} ist aktuell „${w.stage.label}".`);
+    const companionName = getActiveSpecies().name;
+    parts.push(`Von ${possessive(companionName)} ${w.quests.length} Quests dieser Woche hast du ${w.questDone} geschafft.`);
+    parts.push(`${companionName} ist aktuell „${w.stage.label}".`);
 
     return `
       <h2 class="section-title" style="margin-top:0;">✉️ Dein Wochenbrief</h2>
@@ -3801,10 +3954,11 @@
     const isActive = (e) => !!e && ((e.activities && e.activities.length > 0) || (e.steps && e.steps > 0));
     const activeDates = Object.keys(data.entries).filter((iso) => isActive(data.entries[iso])).sort();
 
-    COMPANION_STAGES.forEach((stage) => {
+    const species = getActiveSpecies();
+    species.stages.forEach((stage) => {
       if (stage.min === 0) return;
       if (activeDates.length >= stage.min) {
-        events.push({ date: activeDates[stage.min - 1], type: "giraffi", icon: "🦒", title: `${COMPANION_NAME} erreicht die Stufe „${stage.label}"` });
+        events.push({ date: activeDates[stage.min - 1], type: "companion", icon: species.emoji, title: `${species.name} erreicht die Stufe „${stage.label}"` });
       }
     });
 
@@ -3846,7 +4000,7 @@
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">🧭 Meine Reise</h2>
       <div class="card">
-        <div class="small muted" style="margin-bottom:14px;">Fotos, Gewichtsmeilensteine, ${esc(COMPANION_NAME)}s Wachstum und deine Erfolge – chronologisch an einem Ort.</div>
+        <div class="small muted" style="margin-bottom:14px;">Fotos, Gewichtsmeilensteine, ${esc(possessive(getActiveSpecies().name))} Wachstum und deine Erfolge – chronologisch an einem Ort.</div>
         <div id="journeyList" class="journey-timeline"><div class="empty-hint">Lädt …</div></div>
       </div>
     `;
@@ -4532,6 +4686,17 @@
       return `<button type="button" class="theme-swatch${active ? " active" : ""}" data-theme="${key}" style="background:${t.swatch};" aria-label="${t.name}"></button>`;
     }).join("");
 
+    const activeSpeciesKey = settings.companionSpecies || "giraffe";
+    const companionSpeciesHTML = COMPANION_SPECIES.map((s) => {
+      const active = activeSpeciesKey === s.key;
+      return `
+        <button type="button" class="companion-species-btn${active ? " active" : ""}" data-species="${s.key}">
+          <span class="companion-species-emoji">${s.emoji}</span>
+          <span class="companion-species-name">${esc(s.name)}</span>
+        </button>
+      `;
+    }).join("");
+
     const selfMessages = Storage.getSelfMessages();
     const selfMessagesHTML = selfMessages.length
       ? selfMessages.slice().reverse().map((m) => `
@@ -4573,6 +4738,12 @@
             <option value="off" ${settings.darkMode === "off" ? "selected" : ""}>Immer aus</option>
           </select>
         </div>
+      </div>
+
+      <h2 class="section-title">🐾 Begleiter</h2>
+      <div class="card">
+        <div class="companion-species-row">${companionSpeciesHTML}</div>
+        <div class="small muted" style="margin-top:10px;">Dein Fortschritt – Wachstumsstufe, Garderobe, Quest-XP – bleibt beim Wechseln erhalten. Nur Aussehen und Name ändern sich.</div>
       </div>
 
       <h2 class="section-title">Tagesziele</h2>
@@ -4668,6 +4839,17 @@
         const key = btn.getAttribute("data-theme");
         Storage.saveSettings({ theme: key });
         applyTheme(key);
+        renderEinstellungen();
+      });
+    });
+
+    container.querySelectorAll(".companion-species-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-species");
+        if (key === (Storage.getSettings().companionSpecies || "giraffe")) return;
+        Storage.saveSettings({ companionSpecies: key });
+        const s = COMPANION_SPECIES.find((sp) => sp.key === key);
+        showToast(`Ab jetzt begleitet dich ${s ? s.name : ""}! 🎉`);
         renderEinstellungen();
       });
     });
