@@ -1733,75 +1733,75 @@
      wiederverwendet, nur an eine passende Stelle auf dem jeweiligen
      Körper verschoben (siehe Anker-Deltas unten). */
   const BEAR_ACCESSORY_ANCHORS = {
-    ohr: [156, 40], kopfDelta: [0, 14], bandanaDelta: [0, 79], brilleDelta: [0, 47],
-    schalDelta: [0, 42], medailleDelta: [0, 45], abzeichen: [40, 160]
+    ohr: [40, 34], kopfDelta: [0, 18], bandanaDelta: [0, 74], brilleDelta: [0, 37],
+    schalDelta: [0, 36], medailleDelta: [0, 42], abzeichen: [40, 152]
   };
 
-  /* Kawaii-Gesicht für Bärls: nur Augen (kein separater Mund, wie beim
-     Vorbild-Kuscheltier) – die Stimmung zeigt sich rein über die
-     Augenform: geschwungen bei Freude, kleine Punkte mit besorgten
-     Brauen bei einer gerissenen Streak, schlichte Punkte sonst. */
+  /* Gesicht für Bärls (2. komplettes Redesign): nur Augen – kein
+     separater Mund/Naht dort –, die Stimmung zeigt sich über die
+     Augenform (geschwungen = fröhlich, kleine besorgte Bögen = traurige
+     Streak, schlichte Punkte = neutral). Bewusst OHNE Augenbrauen-Striche,
+     die zuvor wie Kratzer wirkten. */
   function buildBearFaceSVG(cx, cy, mood) {
-    const eyeDX = 15, ey = cy, col = "#6B4A38";
+    const eyeDX = 17, ey = cy, col = "#7A5233";
     const l = cx - eyeDX, r = cx + eyeDX;
     if (mood === "happy") {
       return `
-        <path d="M${l - 5},${ey} Q${l},${ey - 6} ${l + 5},${ey}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-        <path d="M${r - 5},${ey} Q${r},${ey - 6} ${r + 5},${ey}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M${l - 5.5},${ey} Q${l},${ey - 6.5} ${l + 5.5},${ey}" stroke="${col}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <path d="M${r - 5.5},${ey} Q${r},${ey - 6.5} ${r + 5.5},${ey}" stroke="${col}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
       `;
     }
     if (mood === "sad") {
       return `
-        <circle cx="${l}" cy="${ey + 2}" r="3.2" fill="${col}"/>
-        <circle cx="${r}" cy="${ey + 2}" r="3.2" fill="${col}"/>
-        <path d="M${l - 4},${ey - 6} Q${l},${ey - 9} ${l + 4},${ey - 6}" stroke="${col}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
-        <path d="M${r - 4},${ey - 6} Q${r},${ey - 9} ${r + 4},${ey - 6}" stroke="${col}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
+        <path d="M${l - 5},${ey - 1} Q${l},${ey + 4.5} ${l + 5},${ey - 1}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M${r - 5},${ey - 1} Q${r},${ey + 4.5} ${r + 5},${ey - 1}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
       `;
     }
-    return `<circle cx="${l}" cy="${ey}" r="3.4" fill="${col}"/><circle cx="${r}" cy="${ey}" r="3.4" fill="${col}"/>`;
+    return `<circle cx="${l}" cy="${ey}" r="3.6" fill="${col}"/><circle cx="${r}" cy="${ey}" r="3.6" fill="${col}"/>`;
   }
 
-  /* Bärls im Kuscheltier-Sticker-Stil: großer, weicher Kopf mit
-     eingerollten Ohren (helles Innenohr statt einer dunklen Scheibe),
-     rosigen Wangen, X-Näschen und einer durchgehenden dicken Kontur wie
-     bei einem genähten Plüschtier – kein separater Mund, die Stimmung
-     zeigt sich über die Augenform (siehe buildBearFaceSVG). */
+  /* Bärls, komplett neu gezeichnet (2026-09-07, 2. Redesign): statt
+     lauter einzelner, gleich stark umrandeter Kreise/Ellipsen nebeneinander
+     (was mit sichtbaren Nahtlinien quer über Kopf/Ohren "komisch" wirkte)
+     jetzt ein großer, runder Kopf, unter dem die Ohren zur Hälfte
+     verschwinden – dadurch verschmelzen Kopf und Ohren zu einer
+     durchgehenden Silhouette statt zweier lose danebenstehender Formen.
+     Statt des X-Näschens gibt es jetzt eine richtige kleine Knopfnase mit
+     einem angedeuteten Lächeln darunter, die Wangen sind schlichte runde
+     Flecken ohne zusätzliche Glanz-Striche. */
   function buildBearSVG(stage, mood, equipped) {
-    const bodyColor = "#D8AC8B", darkColor = "#9C7057", muzzleColor = "#FCF1E4", blushColor = "#F5A98E";
+    const bodyColor = "#E8BE99", darkColor = "#A9754F", muzzleColor = "#FFF7EC", blushColor = "#FFB0A6", innerEarColor = "#F6D9BE";
     const acc = buildCompanionAccessoriesSVG(equipped || {}, false, !!stage.crown, BEAR_ACCESSORY_ANCHORS);
     const S = `stroke="${darkColor}" stroke-width="3.2" stroke-linejoin="round"`;
     return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
       <ellipse cx="100" cy="217" rx="46" ry="5" fill="#000" opacity="0.06"/>
-      <ellipse cx="76" cy="205" rx="21" ry="16" fill="${bodyColor}" ${S}/>
-      <ellipse cx="124" cy="205" rx="21" ry="16" fill="${bodyColor}" ${S}/>
-      <ellipse cx="76" cy="208" rx="10" ry="7" fill="${muzzleColor}" opacity="0.8"/>
-      <ellipse cx="124" cy="208" rx="10" ry="7" fill="${muzzleColor}" opacity="0.8"/>
-      <circle cx="68" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
-      <circle cx="76" cy="196" r="3" fill="${muzzleColor}" opacity="0.8"/>
-      <circle cx="84" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
-      <circle cx="116" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
-      <circle cx="124" cy="196" r="3" fill="${muzzleColor}" opacity="0.8"/>
-      <circle cx="132" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
-      <ellipse cx="38" cy="162" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(14 38 162)"/>
-      <ellipse cx="162" cy="162" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(-14 162 162)"/>
-      <ellipse cx="100" cy="172" rx="54" ry="46" fill="${bodyColor}" ${S}/>
-      <ellipse cx="100" cy="188" rx="26" ry="22" fill="${muzzleColor}" opacity="0.3"/>
-      <circle cx="58" cy="54" r="24" fill="${bodyColor}" ${S}/>
-      <circle cx="142" cy="54" r="24" fill="${bodyColor}" ${S}/>
-      <ellipse cx="58" cy="57" rx="10" ry="13" fill="${blushColor}" opacity="0.45"/>
-      <ellipse cx="142" cy="57" rx="10" ry="13" fill="${blushColor}" opacity="0.45"/>
-      <ellipse cx="100" cy="100" rx="48" ry="44" fill="${bodyColor}" ${S}/>
-      <ellipse cx="72" cy="118" rx="12" ry="8.5" fill="${blushColor}" opacity="0.55"/>
-      <ellipse cx="128" cy="118" rx="12" ry="8.5" fill="${blushColor}" opacity="0.55"/>
-      <line x1="66" y1="115" x2="71" y2="112" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
-      <line x1="69" y1="119" x2="74" y2="116" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
-      <line x1="129" y1="112" x2="134" y2="115" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
-      <line x1="126" y1="116" x2="131" y2="119" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
-      <ellipse cx="100" cy="113" rx="29" ry="21" fill="${muzzleColor}"/>
-      ${stage.crown ? `<path d="M74,36 L82,18 L100,32 L118,18 L126,36 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      <ellipse cx="78" cy="206" rx="18" ry="13" fill="${bodyColor}" ${S}/>
+      <ellipse cx="122" cy="206" rx="18" ry="13" fill="${bodyColor}" ${S}/>
+      <ellipse cx="78" cy="209" rx="9" ry="6" fill="${muzzleColor}" opacity="0.85"/>
+      <ellipse cx="122" cy="209" rx="9" ry="6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="71" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="78" cy="198" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="85" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="115" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="122" cy="198" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="129" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <ellipse cx="36" cy="158" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(16 36 158)"/>
+      <ellipse cx="164" cy="158" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(-16 164 158)"/>
+      <ellipse cx="100" cy="168" rx="53" ry="45" fill="${bodyColor}" ${S}/>
+      <ellipse cx="100" cy="184" rx="25" ry="21" fill="${muzzleColor}" opacity="0.3"/>
+      <circle cx="54" cy="48" r="25" fill="${bodyColor}" ${S}/>
+      <circle cx="146" cy="48" r="25" fill="${bodyColor}" ${S}/>
+      <ellipse cx="54" cy="51" rx="11" ry="14" fill="${innerEarColor}"/>
+      <ellipse cx="146" cy="51" rx="11" ry="14" fill="${innerEarColor}"/>
+      <ellipse cx="100" cy="88" rx="54" ry="50" fill="${bodyColor}" ${S}/>
+      <ellipse cx="70" cy="98" rx="11" ry="7.5" fill="${blushColor}" opacity="0.55"/>
+      <ellipse cx="130" cy="98" rx="11" ry="7.5" fill="${blushColor}" opacity="0.55"/>
+      <ellipse cx="100" cy="102" rx="31" ry="23" fill="${muzzleColor}"/>
+      ${stage.crown ? `<path d="M74,32 L82,14 L100,28 L118,14 L126,32 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
       ${acc.body}
-      ${buildBearFaceSVG(100, 92, mood)}
-      <g stroke="${darkColor}" stroke-width="2.4" stroke-linecap="round"><line x1="97" y1="108" x2="103" y2="114"/><line x1="103" y1="108" x2="97" y2="114"/></g>
+      ${buildBearFaceSVG(100, 82, mood)}
+      <ellipse cx="100" cy="98" rx="5.5" ry="4.2" fill="${darkColor}"/>
+      <path d="M92,104 Q96,109 100,104.5 Q104,109 108,104" stroke="${darkColor}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.6"/>
       ${acc.face}
     </svg>`;
   }
