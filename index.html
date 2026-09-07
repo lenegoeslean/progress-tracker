@@ -231,6 +231,19 @@
 
   .activity-item.plan-item{border-style:dashed; background:var(--accent-soft-2);}
 
+  .todo-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 12px; border-radius:var(--radius-sm);
+    margin-bottom:8px; border:1px solid var(--border);
+    background:var(--card);
+    transition:background-color .3s ease, border-color .15s ease, opacity .15s ease;
+  }
+  .todo-check-label{display:flex; align-items:center; gap:10px; flex:1; min-width:0; cursor:pointer;}
+  .todo-check-label .todo-check{width:19px; height:19px; flex-shrink:0; accent-color:var(--accent);}
+  .todo-check-label .todo-text{font-size:13.5px; font-weight:600; overflow-wrap:anywhere;}
+  .todo-item.done{background:var(--accent-soft-2); border-color:transparent;}
+  .todo-item.done .todo-text{text-decoration:line-through; color:var(--text-muted); font-weight:500;}
+
   /* bottom nav */
   nav.tabbar{
     position:fixed; left:0; right:0; bottom:0; z-index:30;
@@ -388,7 +401,8 @@
   .cal-day .mark{position:absolute; bottom:4px; display:flex; gap:2px;}
   .cal-day .mark span{width:4px; height:4px; border-radius:50%; background:var(--accent);}
   .cal-day.selected .mark span{background:#fff;}
-  .cal-day .plan-mark{position:absolute; top:3px; right:5px; font-size:8px; line-height:1; opacity:0.85;}
+  .cal-day .cal-day-marks{position:absolute; top:3px; right:4px; display:flex; gap:1px; font-size:8px; line-height:1;}
+  .cal-day .plan-mark, .cal-day .todo-mark{opacity:0.85;}
 
   /* photos */
   .photo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}

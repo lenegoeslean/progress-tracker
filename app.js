@@ -258,6 +258,7 @@
       if (!this._cache.settings) this._cache.settings = {};
       if (!this._cache.selfMessages) this._cache.selfMessages = [];
       if (!this._cache.plans) this._cache.plans = {};
+      if (!this._cache.todos) this._cache.todos = {};
       return this._cache;
     },
     save() {
@@ -383,6 +384,29 @@
       data.plans[dateISO] = data.plans[dateISO].filter((p) => p.id !== id);
       this.save();
     },
+    getTodos(dateISO) {
+      const data = this.load();
+      return data.todos[dateISO] || [];
+    },
+    addTodo(dateISO, text) {
+      const data = this.load();
+      if (!data.todos[dateISO]) data.todos[dateISO] = [];
+      data.todos[dateISO].push({ id: genId(), text, done: false });
+      this.save();
+    },
+    toggleTodo(dateISO, id) {
+      const data = this.load();
+      if (!data.todos[dateISO]) return;
+      const t = data.todos[dateISO].find((x) => x.id === id);
+      if (t) t.done = !t.done;
+      this.save();
+    },
+    deleteTodo(dateISO, id) {
+      const data = this.load();
+      if (!data.todos[dateISO]) return;
+      data.todos[dateISO] = data.todos[dateISO].filter((t) => t.id !== id);
+      this.save();
+    },
     getSettings() {
       const data = this.load();
       return Object.assign({
@@ -424,11 +448,12 @@
       if (!this._cache.settings) this._cache.settings = {};
       if (!this._cache.selfMessages) this._cache.selfMessages = [];
       if (!this._cache.plans) this._cache.plans = {};
+      if (!this._cache.todos) this._cache.todos = {};
       this.save();
     },
     resetTrackingData() {
       const data = this.load();
-      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], plans: {}, settings: data.settings || {}, selfMessages: data.selfMessages || [] };
+      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], plans: {}, todos: {}, settings: data.settings || {}, selfMessages: data.selfMessages || [] };
       this.save();
     }
   };
@@ -633,6 +658,20 @@
         }).join("")
       : `<div class="empty-hint">Noch nichts geplant.</div>`;
 
+    const todos = Storage.getTodos(dateISO);
+    const todosDone = todos.filter((t) => t.done).length;
+    const todoPct = todos.length ? Math.round((todosDone / todos.length) * 100) : 0;
+    const todoRows = todos.length
+      ? todos.slice().sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1)).map((t) => `
+          <div class="todo-item${t.done ? " done" : ""}" data-todo-id="${t.id}">
+            <label class="todo-check-label">
+              <input type="checkbox" class="todo-check" ${t.done ? "checked" : ""} aria-label="Erledigt">
+              <span class="todo-text">${esc(t.text)}</span>
+            </label>
+            <button class="del-btn" data-del-todo="${t.id}" aria-label="Löschen">✕</button>
+          </div>`).join("")
+      : `<div class="empty-hint">Noch nichts auf der Liste.</div>`;
+
     const challengeBlock = challenge && challenge.text
       ? `<div class="row-between">
            <div class="small" style="max-width:75%;"><strong>Challenge (${wKey.replace("-W", " · KW ")}):</strong> ${esc(challenge.text)}</div>
@@ -676,6 +715,22 @@
           <button type="submit" class="btn btn-secondary btn-block plan-submit-btn" style="margin-top:8px;">+ Plan hinzufügen</button>
         </form>
         <div class="small muted" style="margin-top:10px;">Ein Plan wird nur angezeigt – er zählt erst als Aktivität, wenn du sie unten wie gewohnt wirklich einträgst.</div>
+      </div>
+
+      <h2 class="section-title">✅ To-Do</h2>
+      <div class="card">
+        ${todos.length ? `
+        <div class="row-between" style="margin-bottom:8px;">
+          <span class="small muted">${todosDone} von ${todos.length} erledigt</span>
+        </div>
+        <div class="progress-bar-lg" style="margin-bottom:12px;"><div class="fill" style="width:${todoPct}%"></div></div>
+        ` : ""}
+        <div class="todo-list">${todoRows}</div>
+        <form class="add-todo-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px; display:flex; gap:8px;">
+          <input type="text" class="todo-text-input" placeholder="z. B. Wasserflasche auffüllen" maxlength="80" style="flex:1;">
+          <button type="submit" class="btn btn-secondary todo-submit-btn" style="white-space:nowrap;">+ Hinzufügen</button>
+        </form>
+        <div class="small muted" style="margin-top:10px;">Für alles, was du dir sonst noch für diesen Tag vornimmst – unabhängig vom Training.</div>
       </div>
 
       <div class="card">
@@ -897,6 +952,33 @@
         const planNoteInput = planForm.querySelector(".plan-note-input");
         Storage.addPlan(dateISO, { type: planSportSelect.value, note: planNoteInput.value.trim() });
         showToast("Plan hinzugefügt");
+        onChange();
+      });
+    }
+
+    container.querySelectorAll(".todo-check").forEach((box) => {
+      box.addEventListener("change", () => {
+        const id = box.closest("[data-todo-id]").getAttribute("data-todo-id");
+        Storage.toggleTodo(dateISO, id);
+        onChange();
+      });
+    });
+    container.querySelectorAll("[data-del-todo]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-todo");
+        Storage.deleteTodo(dateISO, id);
+        onChange();
+      });
+    });
+    const todoForm = container.querySelector(".add-todo-form");
+    if (todoForm) {
+      todoForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const todoTextInput = todoForm.querySelector(".todo-text-input");
+        const text = todoTextInput.value.trim();
+        if (!text) return;
+        Storage.addTodo(dateISO, text);
+        showToast("Zur Liste hinzugefügt");
         onChange();
       });
     }
@@ -1651,35 +1733,75 @@
      wiederverwendet, nur an eine passende Stelle auf dem jeweiligen
      Körper verschoben (siehe Anker-Deltas unten). */
   const BEAR_ACCESSORY_ANCHORS = {
-    ohr: [150, 46], kopfDelta: [0, 22], bandanaDelta: [0, 76], brilleDelta: [0, 54],
-    schalDelta: [0, 42], medailleDelta: [0, 45], abzeichen: [42, 158]
+    ohr: [156, 40], kopfDelta: [0, 14], bandanaDelta: [0, 79], brilleDelta: [0, 47],
+    schalDelta: [0, 42], medailleDelta: [0, 45], abzeichen: [40, 160]
   };
 
-  /* Bärls bekommt – anders als die erste Fassung, die nur eine einzige
-     große Kugel mit Ohren war – einen klar erkennbaren Kopf (eigene
-     Ellipse), der leicht auf dem Körper aufsitzt, dazu einen hellen
-     Bauch-Fleck wie beim Kuscheltier-Vorbild. */
+  /* Kawaii-Gesicht für Bärls: nur Augen (kein separater Mund, wie beim
+     Vorbild-Kuscheltier) – die Stimmung zeigt sich rein über die
+     Augenform: geschwungen bei Freude, kleine Punkte mit besorgten
+     Brauen bei einer gerissenen Streak, schlichte Punkte sonst. */
+  function buildBearFaceSVG(cx, cy, mood) {
+    const eyeDX = 15, ey = cy, col = "#6B4A38";
+    const l = cx - eyeDX, r = cx + eyeDX;
+    if (mood === "happy") {
+      return `
+        <path d="M${l - 5},${ey} Q${l},${ey - 6} ${l + 5},${ey}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M${r - 5},${ey} Q${r},${ey - 6} ${r + 5},${ey}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      `;
+    }
+    if (mood === "sad") {
+      return `
+        <circle cx="${l}" cy="${ey + 2}" r="3.2" fill="${col}"/>
+        <circle cx="${r}" cy="${ey + 2}" r="3.2" fill="${col}"/>
+        <path d="M${l - 4},${ey - 6} Q${l},${ey - 9} ${l + 4},${ey - 6}" stroke="${col}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
+        <path d="M${r - 4},${ey - 6} Q${r},${ey - 9} ${r + 4},${ey - 6}" stroke="${col}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
+      `;
+    }
+    return `<circle cx="${l}" cy="${ey}" r="3.4" fill="${col}"/><circle cx="${r}" cy="${ey}" r="3.4" fill="${col}"/>`;
+  }
+
+  /* Bärls im Kuscheltier-Sticker-Stil: großer, weicher Kopf mit
+     eingerollten Ohren (helles Innenohr statt einer dunklen Scheibe),
+     rosigen Wangen, X-Näschen und einer durchgehenden dicken Kontur wie
+     bei einem genähten Plüschtier – kein separater Mund, die Stimmung
+     zeigt sich über die Augenform (siehe buildBearFaceSVG). */
   function buildBearSVG(stage, mood, equipped) {
-    const bodyColor = "#8B5E3C", darkColor = "#6E4A2E", muzzleColor = "#E8C9A0";
+    const bodyColor = "#D8AC8B", darkColor = "#9C7057", muzzleColor = "#FCF1E4", blushColor = "#F5A98E";
     const acc = buildCompanionAccessoriesSVG(equipped || {}, false, !!stage.crown, BEAR_ACCESSORY_ANCHORS);
+    const S = `stroke="${darkColor}" stroke-width="3.2" stroke-linejoin="round"`;
     return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
-      <ellipse cx="100" cy="216" rx="46" ry="5" fill="#000" opacity="0.06"/>
-      <ellipse cx="78" cy="207" rx="16" ry="12" fill="${darkColor}"/>
-      <ellipse cx="122" cy="207" rx="16" ry="12" fill="${darkColor}"/>
-      <ellipse cx="38" cy="163" rx="15" ry="21" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1" transform="rotate(14 38 163)"/>
-      <ellipse cx="162" cy="163" rx="15" ry="21" fill="${bodyColor}" stroke="${darkColor}" stroke-width="1" transform="rotate(-14 162 163)"/>
-      <ellipse cx="100" cy="172" rx="54" ry="46" fill="${bodyColor}"/>
-      <ellipse cx="100" cy="188" rx="28" ry="24" fill="${muzzleColor}" opacity="0.3"/>
-      <ellipse cx="100" cy="96" rx="46" ry="42" fill="${bodyColor}"/>
-      <circle cx="62" cy="58" r="19" fill="${bodyColor}"/>
-      <circle cx="138" cy="58" r="19" fill="${bodyColor}"/>
-      <circle cx="62" cy="58" r="9.5" fill="${darkColor}"/>
-      <circle cx="138" cy="58" r="9.5" fill="${darkColor}"/>
-      <ellipse cx="100" cy="108" rx="28" ry="21" fill="${muzzleColor}"/>
-      <ellipse cx="100" cy="103" rx="7" ry="5" fill="${darkColor}"/>
-      ${stage.crown ? `<path d="M76,38 L84,20 L100,34 L116,20 L124,38 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      <ellipse cx="100" cy="217" rx="46" ry="5" fill="#000" opacity="0.06"/>
+      <ellipse cx="76" cy="205" rx="21" ry="16" fill="${bodyColor}" ${S}/>
+      <ellipse cx="124" cy="205" rx="21" ry="16" fill="${bodyColor}" ${S}/>
+      <ellipse cx="76" cy="208" rx="10" ry="7" fill="${muzzleColor}" opacity="0.8"/>
+      <ellipse cx="124" cy="208" rx="10" ry="7" fill="${muzzleColor}" opacity="0.8"/>
+      <circle cx="68" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
+      <circle cx="76" cy="196" r="3" fill="${muzzleColor}" opacity="0.8"/>
+      <circle cx="84" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
+      <circle cx="116" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
+      <circle cx="124" cy="196" r="3" fill="${muzzleColor}" opacity="0.8"/>
+      <circle cx="132" cy="198" r="3" fill="${muzzleColor}" opacity="0.8"/>
+      <ellipse cx="38" cy="162" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(14 38 162)"/>
+      <ellipse cx="162" cy="162" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(-14 162 162)"/>
+      <ellipse cx="100" cy="172" rx="54" ry="46" fill="${bodyColor}" ${S}/>
+      <ellipse cx="100" cy="188" rx="26" ry="22" fill="${muzzleColor}" opacity="0.3"/>
+      <circle cx="58" cy="54" r="24" fill="${bodyColor}" ${S}/>
+      <circle cx="142" cy="54" r="24" fill="${bodyColor}" ${S}/>
+      <ellipse cx="58" cy="57" rx="10" ry="13" fill="${blushColor}" opacity="0.45"/>
+      <ellipse cx="142" cy="57" rx="10" ry="13" fill="${blushColor}" opacity="0.45"/>
+      <ellipse cx="100" cy="100" rx="48" ry="44" fill="${bodyColor}" ${S}/>
+      <ellipse cx="72" cy="118" rx="12" ry="8.5" fill="${blushColor}" opacity="0.55"/>
+      <ellipse cx="128" cy="118" rx="12" ry="8.5" fill="${blushColor}" opacity="0.55"/>
+      <line x1="66" y1="115" x2="71" y2="112" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
+      <line x1="69" y1="119" x2="74" y2="116" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
+      <line x1="129" y1="112" x2="134" y2="115" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
+      <line x1="126" y1="116" x2="131" y2="119" stroke="#fff" stroke-width="1.4" opacity="0.45" stroke-linecap="round"/>
+      <ellipse cx="100" cy="113" rx="29" ry="21" fill="${muzzleColor}"/>
+      ${stage.crown ? `<path d="M74,36 L82,18 L100,32 L118,18 L126,36 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
       ${acc.body}
-      ${buildCompanionFaceSVG(100, 98, mood, 1)}
+      ${buildBearFaceSVG(100, 92, mood)}
+      <g stroke="${darkColor}" stroke-width="2.4" stroke-linecap="round"><line x1="97" y1="108" x2="103" y2="114"/><line x1="103" y1="108" x2="97" y2="114"/></g>
       ${acc.face}
     </svg>`;
   }
@@ -3161,12 +3283,16 @@
       const entry = Storage.getEntry(iso);
       const hasData = entry.activities.length > 0 || (entry.steps && entry.steps > 0);
       const hasPlans = Storage.getPlans(iso).length > 0;
+      const hasOpenTodos = Storage.getTodos(iso).some((t) => !t.done);
       const classes = ["cal-day"];
       if (d.getMonth() !== month) classes.push("other");
       if (isSameDay(d, today)) classes.push("today");
       if (iso === kalenderSelected) classes.push("selected");
       return `<button class="${classes.join(" ")}" data-date="${iso}">
-        ${hasPlans ? '<span class="plan-mark" title="Etwas geplant">📅</span>' : ""}
+        <span class="cal-day-marks">
+          ${hasPlans ? '<span class="plan-mark" title="Etwas geplant">📅</span>' : ""}
+          ${hasOpenTodos ? '<span class="todo-mark" title="Offene To-Dos">✅</span>' : ""}
+        </span>
         ${d.getDate()}
         ${hasData ? '<span class="mark"><span></span></span>' : ""}
       </button>`;

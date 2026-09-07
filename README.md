@@ -739,6 +739,28 @@ Tier dich durch die App begleitet:
 - Der gewählte Begleiter erscheint überall dort, wo bisher nur Giraffi
   auftauchte: Heute-Tab, Wochen-Quests, Wochenbrief und "Meine Reise".
 
+## 41. To-Do-Liste im Kalender & in der Tagesansicht
+
+Sowohl auf dem Heute-Tab als auch im Kalender (unterhalb des ausgewählten
+Tages) gibt es jetzt eine eigene ✅ **To-Do**-Karte, unabhängig von den
+Trainings-Aktivitäten:
+
+- Ein Textfeld plus "+ Hinzufügen" legt einen neuen Punkt für genau diesen
+  Tag an (z. B. "Wasserflasche auffüllen", "Meal-Prep für die Woche").
+- Jeder Punkt hat eine Checkbox zum Abhaken – erledigte Punkte werden
+  durchgestrichen und rutschen ans Ende der Liste, ein Fortschrittsbalken
+  zeigt "x von y erledigt".
+- Über das ✕ lässt sich ein Punkt jederzeit wieder löschen.
+- Im Kalender-Monatsraster zeigt ein kleines ✅-Symbol auf der Tages-Kachel
+  an, an welchen Tagen noch offene (nicht abgehakte) To-Dos liegen – analog
+  zum bestehenden 📅-Symbol für Pläne. Sobald alle To-Dos eines Tages
+  erledigt sind, verschwindet das Symbol wieder.
+- To-Dos sind bewusst von der Plan-Funktion (Abschnitt 35) getrennt: Pläne
+  drehen sich um Sportarten und werden zu einer echten Aktivität, sobald du
+  sie einträgst; To-Dos sind freie Stichpunkte für alles andere, was an dem
+  Tag ansteht, und bleiben unabhängig davon einfach als Liste bestehen, bis
+  du sie abhakst oder löschst.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:
