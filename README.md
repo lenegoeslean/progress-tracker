@@ -761,6 +761,32 @@ Trainings-Aktivitäten:
   Tag ansteht, und bleiben unabhängig davon einfach als Liste bestehen, bis
   du sie abhakst oder löschst.
 
+## 42. Leere Zustände mit kleinem Icon
+
+Stellen, an denen bisher nur ein grauer Hinweistext stand, sobald noch
+nichts eingetragen ist ("Noch keine Aktivität eingetragen.", "Noch nichts
+geplant.", "Noch nichts auf der Liste." und viele weitere über die ganze
+App verteilt – Fotos, Gewicht, Körpermaße, abgeschlossene Challenges,
+Meine Reise, Nachrichten an dich selbst, Aktivitäten-Suche in Trends usw.)
+zeigen jetzt zusätzlich ein kleines, passendes Icon in einer weichen
+Kreis-Badge darüber (z. B. 🐾 bei Aktivitäten, 🗓️ bei Pläne, 📋 bei To-Dos,
+🧭 bei Meine Reise, ⚖️ bei Gewicht, 📏 bei Körpermaßen, 💌 bei Nachrichten
+an dich selbst). Rein optisch – an der Logik ändert sich nichts, diese
+Momente wirken jetzt nur einladender statt wie eine Leerstelle.
+
+## 43. Vierter Begleiter: Wolli der Wolf
+
+Unter Einstellungen → 🐾 Begleiter steht jetzt neben Giraffi, Bärls und
+Sharky ein vierter Begleiter zur Wahl: **Wolli** 🐺. Er ist im selben
+Konstruktionsprinzip wie Bärls gezeichnet (großer runder Kopf, unter dem
+die Ohren zur Hälfte verschwinden, Knopfnase mit angedeutetem Lächeln,
+Wangen-Blush) – aber mit spitzen statt runden Ohren, einem etwas
+länglicheren Schnäuzchen, einer kühleren Grau-Palette und einem buschigen,
+weiß gespitzten Schwanz als eigenem Erkennungsmerkmal. Wie bei den
+anderen Begleitern bleibt dabei der komplette Fortschritt (Wachstumsstufe,
+Garderobe-Freischaltungen, Quest-XP) beim Wechseln erhalten – nur Aussehen
+und Name ändern sich.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:

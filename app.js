@@ -568,6 +568,18 @@
   function possessive(name) {
     return /[sxzß]$/i.test(name) ? `${name}'` : `${name}s`;
   }
+  /* Leere Zustände ("Noch nichts eingetragen" o. Ä.) bekommen statt nur
+     einem Textzeile ein kleines, dezentes Icon in einer weichen
+     Kreis-Badge darüber – macht diese Momente freundlicher statt wie
+     eine reine Leerstelle. extraClass/extraStyle optional für
+     Sonderfälle (z. B. Grid-Layout im Foto-Grid). */
+  function emptyHintHTML(icon, text, extraClass, extraStyle) {
+    const cls = ["empty-hint"].concat(extraClass ? [extraClass] : []).join(" ");
+    return `<div class="${cls}"${extraStyle ? ` style="${extraStyle}"` : ""}>
+      <div class="empty-hint-icon">${icon}</div>
+      <div>${text}</div>
+    </div>`;
+  }
   let toastTimer;
   function showToast(msg) {
     const t = document.getElementById("toast");
@@ -633,7 +645,7 @@
             </div>
           </div>`;
         }).join("")
-      : `<div class="empty-hint">Noch keine Aktivität eingetragen.</div>`;
+      : emptyHintHTML("🐾", "Noch keine Aktivität eingetragen.");
 
     const sportOptions = Object.keys(SPORTS).map((key) => `<option value="${key}">${SPORTS[key].icon} ${SPORTS[key].label}</option>`).join("");
 
@@ -656,7 +668,7 @@
             </div>
           </div>`;
         }).join("")
-      : `<div class="empty-hint">Noch nichts geplant.</div>`;
+      : emptyHintHTML("🗓️", "Noch nichts geplant.");
 
     const todos = Storage.getTodos(dateISO);
     const todosDone = todos.filter((t) => t.done).length;
@@ -670,7 +682,7 @@
             </label>
             <button class="del-btn" data-del-todo="${t.id}" aria-label="Löschen">✕</button>
           </div>`).join("")
-      : `<div class="empty-hint">Noch nichts auf der Liste.</div>`;
+      : emptyHintHTML("📋", "Noch nichts auf der Liste.");
 
     const challengeBlock = challenge && challenge.text
       ? `<div class="row-between">
@@ -1168,6 +1180,15 @@
         { min: 7, key: "young", label: "Junger Hai", size: 140 },
         { min: 30, key: "adult", label: "Erwachsener Hai", size: 158 },
         { min: 100, key: "majestic", label: "Stolzer Hai", size: 172, crown: true }
+      ]
+    },
+    {
+      key: "wolf", name: "Wolli", emoji: "🐺",
+      stages: [
+        { min: 0, key: "baby", label: "Baby-Wolf", size: 122 },
+        { min: 7, key: "young", label: "Junger Wolf", size: 140 },
+        { min: 30, key: "adult", label: "Erwachsener Wolf", size: 158 },
+        { min: 100, key: "majestic", label: "Stolzer Wolf", size: 172, crown: true }
       ]
     }
   ];
@@ -1832,9 +1853,77 @@
     </svg>`;
   }
 
+  /* Wolli, im selben Konstruktionsprinzip wie Bärls (großer runder Kopf,
+     unter dem die Ohren zur Hälfte verschwinden, Knopfnase + angedeutetes
+     Lächeln, Wangen-Blush) – aber mit spitzen (statt runden) Ohren, einem
+     etwas länglicheren Schnäuzchen, kühlerer Grau-Palette und einem
+     buschigen, weiß gespitzten Schwanz als eigenständigem Merkmal. */
+  const WOLF_ACCESSORY_ANCHORS = {
+    ohr: [36, 36], kopfDelta: [0, 18], bandanaDelta: [0, 74], brilleDelta: [0, 37],
+    schalDelta: [0, 36], medailleDelta: [0, 42], abzeichen: [40, 152]
+  };
+
+  function buildWolfFaceSVG(cx, cy, mood) {
+    const eyeDX = 17, ey = cy, col = "#3D4148";
+    const l = cx - eyeDX, r = cx + eyeDX;
+    if (mood === "happy") {
+      return `
+        <path d="M${l - 5.5},${ey} Q${l},${ey - 6.5} ${l + 5.5},${ey}" stroke="${col}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <path d="M${r - 5.5},${ey} Q${r},${ey - 6.5} ${r + 5.5},${ey}" stroke="${col}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+      `;
+    }
+    if (mood === "sad") {
+      return `
+        <path d="M${l - 5},${ey - 1} Q${l},${ey + 4.5} ${l + 5},${ey - 1}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M${r - 5},${ey - 1} Q${r},${ey + 4.5} ${r + 5},${ey - 1}" stroke="${col}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      `;
+    }
+    return `<circle cx="${l}" cy="${ey}" r="3.6" fill="${col}"/><circle cx="${r}" cy="${ey}" r="3.6" fill="${col}"/>`;
+  }
+
+  function buildWolfSVG(stage, mood, equipped) {
+    const bodyColor = "#B7C0CB", darkColor = "#707B88", muzzleColor = "#F7F8FA", blushColor = "#F3A9A0", innerEarColor = "#E8CFCB", tailTipColor = "#F7F8FA";
+    const acc = buildCompanionAccessoriesSVG(equipped || {}, false, !!stage.crown, WOLF_ACCESSORY_ANCHORS);
+    const S = `stroke="${darkColor}" stroke-width="3.2" stroke-linejoin="round"`;
+    return `<svg viewBox="0 0 200 220" width="${stage.size}" height="${Math.round(stage.size * 1.1)}">
+      <ellipse cx="100" cy="217" rx="46" ry="5" fill="#000" opacity="0.06"/>
+      <polygon points="140,192 195,176 174,132" fill="${bodyColor}" ${S}/>
+      <ellipse cx="180" cy="146" rx="10" ry="13" fill="${tailTipColor}" transform="rotate(-24 180 146)"/>
+      <ellipse cx="78" cy="206" rx="18" ry="13" fill="${bodyColor}" ${S}/>
+      <ellipse cx="122" cy="206" rx="18" ry="13" fill="${bodyColor}" ${S}/>
+      <ellipse cx="78" cy="209" rx="9" ry="6" fill="${muzzleColor}" opacity="0.85"/>
+      <ellipse cx="122" cy="209" rx="9" ry="6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="71" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="78" cy="198" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="85" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="115" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="122" cy="198" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <circle cx="129" cy="200" r="2.6" fill="${muzzleColor}" opacity="0.85"/>
+      <ellipse cx="36" cy="158" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(16 36 158)"/>
+      <ellipse cx="164" cy="158" rx="15" ry="20" fill="${bodyColor}" ${S} transform="rotate(-16 164 158)"/>
+      <ellipse cx="100" cy="168" rx="53" ry="45" fill="${bodyColor}" ${S}/>
+      <ellipse cx="100" cy="184" rx="25" ry="21" fill="${muzzleColor}" opacity="0.5"/>
+      <polygon points="30,60 22,14 54,32" fill="${bodyColor}" ${S}/>
+      <polygon points="170,60 178,14 146,32" fill="${bodyColor}" ${S}/>
+      <polygon points="34,52 29,24 48,36" fill="${innerEarColor}"/>
+      <polygon points="166,52 171,24 152,36" fill="${innerEarColor}"/>
+      <ellipse cx="100" cy="88" rx="54" ry="50" fill="${bodyColor}" ${S}/>
+      <ellipse cx="70" cy="98" rx="11" ry="7.5" fill="${blushColor}" opacity="0.5"/>
+      <ellipse cx="130" cy="98" rx="11" ry="7.5" fill="${blushColor}" opacity="0.5"/>
+      <ellipse cx="100" cy="106" rx="25" ry="26" fill="${muzzleColor}"/>
+      ${stage.crown ? `<path d="M74,32 L82,14 L100,28 L118,14 L126,32 Z" fill="#F2C94C" stroke="#D9A824" stroke-width="1.5"/>` : ""}
+      ${acc.body}
+      ${buildWolfFaceSVG(100, 82, mood)}
+      <ellipse cx="100" cy="99" rx="5.5" ry="4.2" fill="${darkColor}"/>
+      <path d="M92,106 Q96,111 100,106.5 Q104,111 108,106" stroke="${darkColor}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.6"/>
+      ${acc.face}
+    </svg>`;
+  }
+
   function buildCompanionSVG(species, stage, mood, equipped) {
     if (species && species.key === "bear") return buildBearSVG(stage, mood, equipped);
     if (species && species.key === "shark") return buildSharkSVG(stage, mood, equipped);
+    if (species && species.key === "wolf") return buildWolfSVG(stage, mood, equipped);
     return buildGiraffeSVG(stage, mood, equipped);
   }
 
@@ -3424,7 +3513,7 @@
             <span class="small muted">${byType[k].count}× · ${byType[k].minutes} min · ${byType[k].calories} kcal</span>
           </div>`;
         }).join("")
-      : `<div class="empty-hint">Noch keine Aktivitäten in diesem Monat.</div>`;
+      : emptyHintHTML("🐾", "Noch keine Aktivitäten in diesem Monat.");
 
     const mixWeights = {};
     Object.keys(byType).forEach((k) => { mixWeights[k] = byType[k].minutes || byType[k].count; });
@@ -3463,7 +3552,7 @@
         ${challengeTotal ? `
           <div class="row-between"><span class="small muted">Erfolgsquote</span><span class="small" style="font-weight:700;">${Math.round((challengeDone / challengeTotal) * 100)}%</span></div>
           <div class="progress-bar-lg"><div class="fill" style="width:${Math.round((challengeDone / challengeTotal) * 100)}%"></div></div>
-        ` : `<div class="empty-hint">Keine Challenges in diesem Monat festgelegt.</div>`}
+        ` : emptyHintHTML("🎯", "Keine Challenges in diesem Monat festgelegt.")}
       </div>
 
       <h2 class="section-title">Social-Media-Post</h2>
@@ -3515,7 +3604,7 @@
     });
 
     if (!photos.length) {
-      grid.insertAdjacentHTML("beforeend", `<div class="empty-hint" style="grid-column:1/-1;">Noch keine Fotos. Tippe auf ＋, um dein erstes Progress-Foto hinzuzufügen.</div>`);
+      grid.insertAdjacentHTML("beforeend", emptyHintHTML("📷", "Noch keine Fotos. Tippe auf ＋, um dein erstes Progress-Foto hinzuzufügen.", null, "grid-column:1/-1;"));
     }
 
     document.getElementById("photoInput").addEventListener("change", async (ev) => {
@@ -3596,7 +3685,7 @@
   }
 
   function buildChallengeHistoryRows(rows) {
-    if (!rows.length) return `<div class="empty-hint">Noch keine abgeschlossenen Challenges.</div>`;
+    if (!rows.length) return emptyHintHTML("🏆", "Noch keine abgeschlossenen Challenges.");
     return rows.map((r, i) => {
       const pct = Math.round((r.done / 7) * 100);
       const badge = r.done === 7 ? " 🏆" : "";
@@ -4141,7 +4230,7 @@
     if (!list) return;
 
     if (!all.length) {
-      list.innerHTML = `<div class="empty-hint">Noch keine Meilensteine – leg los, und deine Reise füllt sich hier von selbst.</div>`;
+      list.innerHTML = emptyHintHTML("🧭", "Noch keine Meilensteine – leg los, und deine Reise füllt sich hier von selbst.");
       return;
     }
 
@@ -4345,7 +4434,7 @@
     const filtered = filterType ? all.filter((a) => a.type === filterType) : all;
 
     if (!filtered.length) {
-      container.innerHTML = `<div class="empty-hint">Keine Einträge gefunden.</div>`;
+      container.innerHTML = emptyHintHTML("🔍", "Keine Einträge gefunden.");
       return;
     }
 
@@ -4493,7 +4582,7 @@
   let measurementSelectedType = "taille";
 
   function buildStatPairHTML(points, unit, currentLabel, changeLabel) {
-    if (!points.length) return `<div class="empty-hint">Noch keine Einträge.</div>`;
+    if (!points.length) return emptyHintHTML("📏", "Noch keine Einträge.");
     const latest = points[points.length - 1];
     const first = points[0];
     const change = first.id !== latest.id ? latest.value - first.value : null;
@@ -4517,7 +4606,7 @@
     const trend = computeWeightTrend(weights);
     const latestTrend = trend.length ? trend[trend.length - 1] : null;
 
-    let statsHTML = `<div class="empty-hint">Noch kein Gewicht erfasst. Trag dein erstes Gewicht unten ein.</div>`;
+    let statsHTML = emptyHintHTML("⚖️", "Noch kein Gewicht erfasst. Trag dein erstes Gewicht unten ein.");
     let plateauHTML = "";
     let goalDateHTML = "";
     if (latest) {
@@ -4576,7 +4665,7 @@
             </div>
           </span>
         </div>`).join("")
-      : `<div class="empty-hint">Noch keine Einträge.</div>`;
+      : emptyHintHTML("⚖️", "Noch keine Einträge.");
 
     const allMeasurements = Storage.getMeasurements();
     const measurePoints = allMeasurements.filter((m) => m.type === measurementSelectedType);
@@ -4599,7 +4688,7 @@
             </div>
           </span>
         </div>`).join("")
-      : `<div class="empty-hint">Noch keine Einträge für diese Körperstelle.</div>`;
+      : emptyHintHTML("📏", "Noch keine Einträge für diese Körperstelle.");
 
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">Gewicht</h2>
@@ -4832,7 +4921,7 @@
             <button class="del-btn" data-del-selfmsg="${m.id}" aria-label="Löschen">✕</button>
           </div>
         </div>`).join("")
-      : `<div class="empty-hint">Noch keine Nachrichten gespeichert.</div>`;
+      : emptyHintHTML("💌", "Noch keine Nachrichten gespeichert.");
 
     container.innerHTML = `
       <h2 class="section-title" style="margin-top:0;">Einstellungen</h2>
