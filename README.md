@@ -787,6 +787,45 @@ anderen Begleitern bleibt dabei der komplette Fortschritt (Wachstumsstufe,
 Garderobe-Freischaltungen, Quest-XP) beim Wechseln erhalten – nur Aussehen
 und Name ändern sich.
 
+## 44. Neuer Reiter "Bücher": Lesen tracken
+
+Ein komplett neuer Tab 📚 **Bücher** dreht sich rund ums Lesen – als
+eigener Lebensbereich, unabhängig vom Fitness-Tracking:
+
+- **Seiten-Tracking an jedem Tag**: Sowohl im Heute-Tab als auch im
+  Kalender (unter dem ausgewählten Tag) gibt es jetzt eine eigene 📖
+  **Lesen**-Karte, genau wie bei Geplant/To-Do. Buch auswählen, Seitenzahl
+  eintragen, fertig – ein Fortschrittsbalken zeigt den Stand zum
+  Tagesziel, und im Kalender-Monatsraster markiert ein kleines 📖-Symbol
+  Tage mit Lese-Eintrag.
+- **Bücher verwalten im Bücher-Tab**: Neue Bücher landen zunächst unter
+  "Aktuell am Lesen" (Status *Reading*) – dort siehst du direkt den
+  bisherigen Lesefortschritt (Seiten gelesen / Gesamtseiten, falls
+  angegeben) und kannst ein Buch mit einem Klick als *Read* markieren.
+- **Tagesziel in den Einstellungen**: Unter Einstellungen → 📚 Lese-Ziele
+  lässt sich ein tägliches Seiten-Ziel festlegen (Standard: 15 Seiten) –
+  genau wie bei Schritten, Liegestützen & Co.
+- **Cooles Extra 1 – Visuelles Bücherregal**: Jedes fertig gelesene Buch
+  bekommt einen eigenen, farbigen Buchrücken im 🗄️ Bücherregal. Ein Tipp
+  auf einen Buchrücken zeigt Details (Titel, Autor, Datum) und erlaubt es,
+  ein Buch bei Bedarf zurück zu "Aktuell am Lesen" zu verschieben.
+- **Cooles Extra 2 – Lesestreak & Fertig-Prognose**: Ein eigener,
+  vom Fitness-Streak komplett unabhängiger Lese-Streak zählt Tage, an
+  denen das Seitenziel erreicht wurde (mit derselben Gnadenfrist-Logik wie
+  beim Fitness-Streak – ein noch nicht vorbeigegangener "heute" reißt die
+  Serie nicht). Für Bücher mit hinterlegter Gesamtseitenzahl gibt es
+  zusätzlich eine Fertig-Prognose ("Voraussichtlich fertig am …"), aus dem
+  jüngsten Lesetempo hochgerechnet – analog zur Ziel-Datum-Prognose beim
+  Gewicht.
+- **Cooles Extra 3 – Jahres-Lesechallenge**: Ein Jahresziel ("X Bücher in
+  2026", einstellbar unter Lese-Ziele, Standard 12) mit eigenem
+  Fortschrittsbalken – zählt alle Bücher, die im laufenden Kalenderjahr
+  als gelesen markiert wurden.
+
+Das Bücherregal bleibt beim "Trainingsdaten zurücksetzen"-Knopf in den
+Einstellungen bewusst erhalten (wie Fotos und Nachrichten an dich selbst)
+– es ist deine persönliche Sammlung, kein Trainingsdatum.
+
 ## Mögliche nächste Schritte
 
 Ein paar Ideen, mit denen wir die App als Nächstes weiter ausbauen könnten:

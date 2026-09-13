@@ -45,6 +45,8 @@
   const DEFAULT_PUSHUPS_GOAL = 20;
   const DEFAULT_PLANK_GOAL_SECONDS = 60;
   const STREAK_FREEZE_PER_MONTH = 1;
+  const DEFAULT_PAGES_GOAL = 15;
+  const DEFAULT_YEARLY_BOOKS_GOAL = 12;
 
   /* Chaos-Modus: an ~jedem 3. Tag (deterministisch pro Datum, kein
      Neu-Würfeln bei jedem Rendern) taucht statt der üblichen Routine eine
@@ -259,6 +261,7 @@
       if (!this._cache.selfMessages) this._cache.selfMessages = [];
       if (!this._cache.plans) this._cache.plans = {};
       if (!this._cache.todos) this._cache.todos = {};
+      if (!this._cache.books) this._cache.books = [];
       return this._cache;
     },
     save() {
@@ -271,7 +274,10 @@
     },
     getEntry(dateISO) {
       const data = this.load();
-      return data.entries[dateISO] || { steps: null, activities: [], challengeChecked: false, water: 0, pushups: null, plankSeconds: null, stretchingDone: false, chaosDone: false };
+      const entry = data.entries[dateISO];
+      if (!entry) return { steps: null, activities: [], challengeChecked: false, water: 0, pushups: null, plankSeconds: null, stretchingDone: false, chaosDone: false, reading: [] };
+      if (!entry.reading) entry.reading = [];
+      return entry;
     },
     setEntry(dateISO, entry) {
       const data = this.load();
@@ -407,13 +413,82 @@
       data.todos[dateISO] = data.todos[dateISO].filter((t) => t.id !== id);
       this.save();
     },
+    getBooks() {
+      const data = this.load();
+      return data.books.slice();
+    },
+    addBook(book) {
+      const data = this.load();
+      const entry = Object.assign(
+        { id: genId(), author: "", totalPages: null, status: "reading", addedDate: toISO(new Date()), finishedDate: null },
+        book
+      );
+      data.books.push(entry);
+      this.save();
+      return entry;
+    },
+    updateBook(id, patch) {
+      const data = this.load();
+      const b = data.books.find((x) => x.id === id);
+      if (!b) return;
+      Object.assign(b, patch);
+      this.save();
+    },
+    markBookRead(id) {
+      const data = this.load();
+      const b = data.books.find((x) => x.id === id);
+      if (!b) return;
+      b.status = "read";
+      b.finishedDate = toISO(new Date());
+      this.save();
+    },
+    markBookReading(id) {
+      const data = this.load();
+      const b = data.books.find((x) => x.id === id);
+      if (!b) return;
+      b.status = "reading";
+      b.finishedDate = null;
+      this.save();
+    },
+    deleteBook(id) {
+      const data = this.load();
+      data.books = data.books.filter((b) => b.id !== id);
+      this.save();
+    },
+    restoreBook(book) {
+      const data = this.load();
+      data.books = data.books.filter((b) => b.id !== book.id);
+      data.books.push(book);
+      this.save();
+    },
+    addReadingLog(dateISO, log) {
+      const entry = this.getEntry(dateISO);
+      entry.reading.push(Object.assign({ id: genId() }, log));
+      this.setEntry(dateISO, entry);
+    },
+    deleteReadingLog(dateISO, id) {
+      const entry = this.getEntry(dateISO);
+      entry.reading = entry.reading.filter((r) => r.id !== id);
+      this.setEntry(dateISO, entry);
+    },
+    getTotalPagesReadForBook(bookId) {
+      const data = this.load();
+      let total = 0;
+      Object.keys(data.entries).forEach((iso) => {
+        (data.entries[iso].reading || []).forEach((r) => {
+          if (r.bookId === bookId) total += Number(r.pages) || 0;
+        });
+      });
+      return total;
+    },
     getSettings() {
       const data = this.load();
       return Object.assign({
         theme: "pink", darkMode: "auto", stepsGoal: DEFAULT_STEPS_GOAL, waterGoalMl: DEFAULT_WATER_GOAL_ML, appName: DEFAULT_APP_NAME,
         weeklyGoalMode: "sessions", weeklyGoalSessions: DEFAULT_WEEKLY_GOAL_SESSIONS, weeklyGoalMinutes: DEFAULT_WEEKLY_GOAL_MINUTES,
         targetWeightKg: null, pushupsGoal: DEFAULT_PUSHUPS_GOAL, plankGoalSeconds: DEFAULT_PLANK_GOAL_SECONDS, chaosMode: true,
-        seenAccessoryKeys: [], equippedAccessories: {}, companionSpecies: "giraffe"
+        seenAccessoryKeys: [], equippedAccessories: {}, companionSpecies: "giraffe",
+        dailyPagesGoal: DEFAULT_PAGES_GOAL, yearlyBooksGoal: DEFAULT_YEARLY_BOOKS_GOAL
       }, data.settings);
     },
     saveSettings(patch) {
@@ -449,11 +524,12 @@
       if (!this._cache.selfMessages) this._cache.selfMessages = [];
       if (!this._cache.plans) this._cache.plans = {};
       if (!this._cache.todos) this._cache.todos = {};
+      if (!this._cache.books) this._cache.books = [];
       this.save();
     },
     resetTrackingData() {
       const data = this.load();
-      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], plans: {}, todos: {}, settings: data.settings || {}, selfMessages: data.selfMessages || [] };
+      this._cache = { entries: {}, challenges: {}, weights: [], measurements: [], plans: {}, todos: {}, settings: data.settings || {}, selfMessages: data.selfMessages || [], books: data.books || [] };
       this.save();
     }
   };
@@ -693,7 +769,34 @@
          </div>`
       : `<div class="small muted">Noch keine Challenge für diese Woche festgelegt. <button class="btn-ghost btn-sm" data-goto="challenge" style="margin-left:4px;">Challenge festlegen</button></div>`;
 
+    const books = Storage.getBooks();
+    const booksById = {};
+    books.forEach((b) => { booksById[b.id] = b; });
+    const readingBooks = books.filter((b) => b.status === "reading");
     const goals = Storage.getSettings();
+    const pagesToday = (entry.reading || []).reduce((sum, r) => sum + (Number(r.pages) || 0), 0);
+    const pagesPct = Math.min(100, Math.round((pagesToday / goals.dailyPagesGoal) * 100));
+    const readingRows = (entry.reading && entry.reading.length)
+      ? entry.reading.map((r) => {
+          const book = booksById[r.bookId];
+          const title = book ? book.title : "(Buch gelöscht)";
+          return `
+          <div class="activity-item" data-reading-id="${r.id}">
+            <div class="info">
+              <div class="icon-badge" style="background:#EADCF8">📖</div>
+              <div>
+                <div>${esc(title)}</div>
+                <div class="stats">${r.pages} Seiten</div>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="del-btn" data-del-reading="${r.id}" aria-label="Löschen">✕</button>
+            </div>
+          </div>`;
+        }).join("")
+      : emptyHintHTML("📖", "Heute noch nichts gelesen.");
+    const readingBookOptions = readingBooks.map((b) => `<option value="${b.id}">${esc(b.title)}</option>`).join("");
+
     const stepsVal = entry.steps || 0;
     const stepsPct = Math.min(100, Math.round((stepsVal / goals.stepsGoal) * 100));
     const stepsGoalHTML = `
@@ -743,6 +846,28 @@
           <button type="submit" class="btn btn-secondary todo-submit-btn" style="white-space:nowrap;">+ Hinzufügen</button>
         </form>
         <div class="small muted" style="margin-top:10px;">Für alles, was du dir sonst noch für diesen Tag vornimmst – unabhängig vom Training.</div>
+      </div>
+
+      <h2 class="section-title">📖 Lesen</h2>
+      <div class="card">
+        <div class="activity-list">${readingRows}</div>
+        <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${pagesPct}%"></div></div>
+        <div class="goal-caption">${pagesToday >= goals.dailyPagesGoal ? `🎯 Leseziel erreicht (${goals.dailyPagesGoal} Seiten)!` : `${pagesToday} / ${goals.dailyPagesGoal} Seiten`}</div>
+        ${readingBooks.length ? `
+        <form class="add-reading-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px;">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Buch</label>
+              <select class="reading-book-select">${readingBookOptions}</select>
+            </div>
+            <div class="field">
+              <label class="field-label">Seiten</label>
+              <input type="number" min="1" step="1" class="reading-pages-input" placeholder="z. B. 20">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block reading-submit-btn" style="margin-top:8px;">+ Lesefortschritt eintragen</button>
+        </form>
+        ` : `<div class="small muted" style="margin-top:10px;">Noch kein Buch als „Aktuell am Lesen" markiert. <button class="btn-ghost btn-sm" data-goto="buecher" style="margin-left:4px;">Buch hinzufügen</button></div>`}
       </div>
 
       <div class="card">
@@ -945,8 +1070,8 @@
         Storage.updateEntry(dateISO, (e) => { e.challengeChecked = challengeCheck.checked; });
       });
     }
-    container.querySelectorAll('[data-goto="challenge"]').forEach((b) => {
-      b.addEventListener("click", () => switchTab("challenge"));
+    container.querySelectorAll('[data-goto]').forEach((b) => {
+      b.addEventListener("click", () => switchTab(b.getAttribute("data-goto")));
     });
 
     container.querySelectorAll("[data-del-plan]").forEach((btn) => {
@@ -991,6 +1116,29 @@
         if (!text) return;
         Storage.addTodo(dateISO, text);
         showToast("Zur Liste hinzugefügt");
+        onChange();
+      });
+    }
+
+    container.querySelectorAll("[data-del-reading]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-reading");
+        Storage.deleteReadingLog(dateISO, id);
+        onChange();
+      });
+    });
+    const readingForm = container.querySelector(".add-reading-form");
+    if (readingForm) {
+      readingForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const bookSelect = readingForm.querySelector(".reading-book-select");
+        const pagesInput = readingForm.querySelector(".reading-pages-input");
+        const pages = Math.max(0, parseInt(pagesInput.value, 10) || 0);
+        if (!bookSelect.value || pages <= 0) { showToast("Bitte Buch und Seitenzahl angeben"); return; }
+        Storage.addReadingLog(dateISO, { bookId: bookSelect.value, pages });
+        const entryNow = Storage.getEntry(dateISO);
+        const totalToday = entryNow.reading.reduce((s, r) => s + (Number(r.pages) || 0), 0);
+        showToast(totalToday >= goals.dailyPagesGoal ? "🎯 Leseziel erreicht!" : "Lesefortschritt gespeichert");
         onChange();
       });
     }
@@ -3373,6 +3521,7 @@
       const hasData = entry.activities.length > 0 || (entry.steps && entry.steps > 0);
       const hasPlans = Storage.getPlans(iso).length > 0;
       const hasOpenTodos = Storage.getTodos(iso).some((t) => !t.done);
+      const hasReading = (entry.reading || []).length > 0;
       const classes = ["cal-day"];
       if (d.getMonth() !== month) classes.push("other");
       if (isSameDay(d, today)) classes.push("today");
@@ -3381,6 +3530,7 @@
         <span class="cal-day-marks">
           ${hasPlans ? '<span class="plan-mark" title="Etwas geplant">📅</span>' : ""}
           ${hasOpenTodos ? '<span class="todo-mark" title="Offene To-Dos">✅</span>' : ""}
+          ${hasReading ? '<span class="reading-mark" title="Gelesen">📖</span>' : ""}
         </span>
         ${d.getDate()}
         ${hasData ? '<span class="mark"><span></span></span>' : ""}
@@ -3420,6 +3570,262 @@
     const editorRoot = document.getElementById("kalEditor");
     editorRoot.innerHTML = entryEditorHTML(kalenderSelected);
     bindEntryEditor(editorRoot, kalenderSelected, renderKalender);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Tab: Bücher                                                        */
+  /* ---------------------------------------------------------------- */
+
+  /* Lesestreak: eigenständige, vom Fitness-Streak (computeStreaks)
+     komplett unabhängige Berechnung – Lesen ist ein eigener Lebensbereich
+     und soll das Wachstum von Giraffi/Bärls/Sharky/Wolli nicht
+     beeinflussen. Gleiches Gnadenfrist-Prinzip wie beim Fitness-Streak:
+     nur ein bereits vergangener Tag ohne erreichtes Seitenziel reißt die
+     Serie, ein noch leerer "heute" (noch nicht vorbei) nicht. */
+  function computeReadingStreak() {
+    const data = Storage.load();
+    const goals = Storage.getSettings();
+    const pagesFor = (e) => (e && e.reading ? e.reading.reduce((s, r) => s + (Number(r.pages) || 0), 0) : 0);
+    const isActive = (e) => pagesFor(e) >= goals.dailyPagesGoal;
+    const activeDates = Object.keys(data.entries).filter((iso) => isActive(data.entries[iso])).sort();
+    let longest = activeDates.length ? 1 : 0, run = 1;
+    for (let i = 1; i < activeDates.length; i++) {
+      const diffDays = Math.round((fromISO(activeDates[i]) - fromISO(activeDates[i - 1])) / 86400000);
+      run = diffDays === 1 ? run + 1 : 1;
+      if (run > longest) longest = run;
+    }
+    let current = 0;
+    let cursor = new Date();
+    if (!isActive(data.entries[toISO(cursor)])) {
+      cursor = addDays(cursor, -1);
+    }
+    while (isActive(data.entries[toISO(cursor)])) {
+      current++;
+      cursor = addDays(cursor, -1);
+    }
+    return { current, longest, totalActiveDays: activeDates.length };
+  }
+
+  /* Fertig-Prognose pro Buch: lineare Hochrechnung aus dem Lesetempo der
+     letzten Lese-Tage (analog zu computeGoalDateProjection beim Gewicht). */
+  function computeBookFinishProjection(book) {
+    if (!book || book.status !== "reading" || !book.totalPages) return null;
+    const data = Storage.load();
+    const byDate = {};
+    Object.keys(data.entries).forEach((iso) => {
+      (data.entries[iso].reading || []).forEach((r) => {
+        if (r.bookId === book.id) byDate[iso] = (byDate[iso] || 0) + (Number(r.pages) || 0);
+      });
+    });
+    const dates = Object.keys(byDate).sort();
+    if (!dates.length) return { status: "insufficient" };
+    let cum = 0;
+    const cumPoints = dates.map((iso) => { cum += byDate[iso]; return { date: iso, value: cum }; });
+    const totalRead = cum;
+    const remaining = book.totalPages - totalRead;
+    if (remaining <= 0) return { status: "reached", pagesRead: totalRead };
+    const recent = cumPoints.slice(-8);
+    const first = recent[0], last = recent[recent.length - 1];
+    const days = (fromISO(last.date) - fromISO(first.date)) / 86400000;
+    if (days < 2 || recent.length < 2) return { status: "insufficient", pagesRead: totalRead };
+    const ratePerDay = (last.value - first.value) / days;
+    if (ratePerDay < 0.2) return { status: "stalled", pagesRead: totalRead };
+    const daysNeeded = Math.ceil(remaining / ratePerDay);
+    const projectedDate = addDays(fromISO(last.date), daysNeeded);
+    return { status: "ok", date: projectedDate, pagesRead: totalRead, pagesPerDay: ratePerDay };
+  }
+
+  /* Jahres-Lesechallenge: Anzahl im aktuellen Kalenderjahr fertig
+     gelesener Bücher gegen ein Jahresziel aus den Einstellungen. */
+  function computeYearlyReadingChallenge() {
+    const goals = Storage.getSettings();
+    const books = Storage.getBooks();
+    const year = new Date().getFullYear();
+    const finishedThisYear = books.filter((b) => b.status === "read" && b.finishedDate && fromISO(b.finishedDate).getFullYear() === year).length;
+    const goal = goals.yearlyBooksGoal || DEFAULT_YEARLY_BOOKS_GOAL;
+    const pct = Math.min(100, Math.round((finishedThisYear / goal) * 100));
+    return { finishedThisYear, goal, pct, year };
+  }
+
+  /* Bücherregal: jedes fertig gelesene Buch bekommt einen farbigen
+     "Buchrücken" – die Farbe wird deterministisch aus der Buch-ID
+     abgeleitet, damit dasselbe Buch bei jedem Rendern dieselbe Farbe hat. */
+  const BOOK_SPINE_COLORS = ["#FF4D8D", "#FFB86B", "#6BCB77", "#4D96FF", "#B983FF", "#FF6B6B", "#2EC4B6", "#F7B32B"];
+  function spineColorForBook(id) {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    return BOOK_SPINE_COLORS[hash % BOOK_SPINE_COLORS.length];
+  }
+
+  let buecherSelectedShelfId = null;
+
+  function renderBuecher() {
+    const container = document.getElementById("tab-buecher");
+    const goals = Storage.getSettings();
+    const allBooks = Storage.getBooks();
+    const readingList = allBooks.filter((b) => b.status === "reading");
+    const readBooks = allBooks.filter((b) => b.status === "read").sort((a, b) => (b.finishedDate || "").localeCompare(a.finishedDate || ""));
+
+    const todayISO = toISO(new Date());
+    const todayEntry = Storage.getEntry(todayISO);
+    const pagesToday = (todayEntry.reading || []).reduce((sum, r) => sum + (Number(r.pages) || 0), 0);
+    const streak = computeReadingStreak();
+    const yearly = computeYearlyReadingChallenge();
+
+    const readingRows = readingList.length
+      ? readingList.map((b) => {
+          const pagesRead = Storage.getTotalPagesReadForBook(b.id);
+          const pct = b.totalPages ? Math.min(100, Math.round((pagesRead / b.totalPages) * 100)) : null;
+          let projectionText = "";
+          if (b.totalPages) {
+            const projection = computeBookFinishProjection(b);
+            if (!projection || projection.status === "insufficient") projectionText = "Noch zu wenige Lese-Tage für eine Prognose.";
+            else if (projection.status === "reached") projectionText = "🎉 Seitenzahl erreicht!";
+            else if (projection.status === "stalled") projectionText = "Zuletzt kaum Fortschritt – Prognose pausiert.";
+            else if (projection.status === "ok") projectionText = `Voraussichtlich fertig am ${formatShortDate(projection.date)} (${projection.pagesPerDay.toFixed(1)} Seiten/Tag)`;
+          }
+          return `
+          <div class="book-card" data-book-id="${b.id}">
+            <div class="book-card-main">
+              <div class="book-card-title">${esc(b.title)}</div>
+              ${b.author ? `<div class="book-card-author">${esc(b.author)}</div>` : ""}
+              ${b.totalPages ? `
+                <div class="progress-bar-lg" style="margin:8px 0 4px;"><div class="fill" style="width:${pct}%"></div></div>
+                <div class="small muted">${pagesRead} / ${b.totalPages} Seiten${projectionText ? " · " + projectionText : ""}</div>
+              ` : `<div class="small muted" style="margin-top:6px;">${pagesRead} Seiten gelesen</div>`}
+            </div>
+            <div class="item-actions" style="flex-direction:column; align-items:flex-end; gap:6px;">
+              <button type="button" class="btn-ghost btn-sm" data-mark-read="${b.id}" style="white-space:nowrap;">✓ Gelesen</button>
+              <button class="del-btn" data-del-book="${b.id}" aria-label="Löschen">✕</button>
+            </div>
+          </div>`;
+        }).join("")
+      : emptyHintHTML("📖", "Noch kein Buch als „Aktuell am Lesen“ eingetragen.");
+
+    const selectedShelfBook = buecherSelectedShelfId ? readBooks.find((b) => b.id === buecherSelectedShelfId) : null;
+    const shelfHTML = readBooks.length
+      ? `<div class="bookshelf">
+          ${readBooks.map((b) => `
+            <button type="button" class="book-spine${b.id === buecherSelectedShelfId ? " active" : ""}" data-spine-book="${b.id}" style="background:${spineColorForBook(b.id)};" title="${esc(b.title)}">
+              <span class="book-spine-title">${esc(b.title)}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="small muted" style="margin-top:10px;">Tipp: Auf ein Buch im Regal tippen für Details.</div>
+        ${selectedShelfBook ? `
+          <div class="card" style="margin-top:12px; background:var(--accent-soft-2);">
+            <div class="book-card-title">${esc(selectedShelfBook.title)}</div>
+            ${selectedShelfBook.author ? `<div class="book-card-author">${esc(selectedShelfBook.author)}</div>` : ""}
+            <div class="small muted" style="margin-top:6px;">${selectedShelfBook.finishedDate ? "Fertig gelesen am " + formatShortDate(fromISO(selectedShelfBook.finishedDate)) : ""}${selectedShelfBook.totalPages ? ` · ${selectedShelfBook.totalPages} Seiten` : ""}</div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button type="button" class="btn btn-ghost btn-sm" data-unmark-read="${selectedShelfBook.id}">↩︎ Zurück zu „Aktuell am Lesen“</button>
+              <button type="button" class="del-btn" data-del-book="${selectedShelfBook.id}" aria-label="Löschen">✕</button>
+            </div>
+          </div>
+        ` : ""}`
+      : emptyHintHTML("📚", "Noch keine gelesenen Bücher im Regal.");
+
+    container.innerHTML = `
+      <h2 class="section-title" style="margin-top:0;">📚 Bücher</h2>
+
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-value">${pagesToday} / ${goals.dailyPagesGoal}</div><div class="stat-label">Seiten heute</div></div>
+        <div class="stat-box"><div class="stat-value">${streak.current} 🔥</div><div class="stat-label">Lese-Streak (Tage)</div></div>
+      </div>
+
+      <h2 class="section-title">🎯 Jahres-Lesechallenge ${yearly.year}</h2>
+      <div class="card">
+        <div class="progress-bar-lg"><div class="fill" style="width:${yearly.pct}%"></div></div>
+        <div class="goal-caption">${yearly.finishedThisYear} / ${yearly.goal} Büchern gelesen${yearly.finishedThisYear >= yearly.goal ? " – Ziel erreicht! 🎉" : ""}</div>
+      </div>
+
+      <h2 class="section-title">📖 Aktuell am Lesen</h2>
+      <div class="card">
+        <div class="activity-list">${readingRows}</div>
+      </div>
+
+      <h2 class="section-title">+ Neues Buch</h2>
+      <div class="card">
+        <form id="addBookForm">
+          <div class="field">
+            <label class="field-label">Titel</label>
+            <input type="text" id="bookTitleInput" maxlength="80" placeholder="z. B. Atomic Habits">
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Autor (optional)</label>
+              <input type="text" id="bookAuthorInput" maxlength="60" placeholder="z. B. James Clear">
+            </div>
+            <div class="field">
+              <label class="field-label">Gesamtseiten (optional)</label>
+              <input type="number" min="1" step="1" id="bookPagesInput" placeholder="z. B. 320">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">+ Buch hinzufügen</button>
+        </form>
+      </div>
+
+      <h2 class="section-title">🗄️ Bücherregal (${readBooks.length})</h2>
+      <div class="card">${shelfHTML}</div>
+    `;
+
+    const addBookForm = document.getElementById("addBookForm");
+    addBookForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const titleInput = document.getElementById("bookTitleInput");
+      const authorInput = document.getElementById("bookAuthorInput");
+      const pagesInput = document.getElementById("bookPagesInput");
+      const title = titleInput.value.trim();
+      if (!title) { showToast("Bitte einen Titel eingeben"); return; }
+      const totalPages = pagesInput.value ? Math.max(1, parseInt(pagesInput.value, 10) || null) : null;
+      Storage.addBook({ title, author: authorInput.value.trim(), totalPages });
+      showToast("Buch hinzugefügt");
+      renderBuecher();
+    });
+
+    container.querySelectorAll("[data-mark-read]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-mark-read");
+        const book = allBooks.find((b) => b.id === id);
+        Storage.markBookRead(id);
+        showToast(book ? `🎉 „${book.title}“ als gelesen markiert!` : "Als gelesen markiert");
+        renderBuecher();
+      });
+    });
+
+    container.querySelectorAll("[data-unmark-read]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-unmark-read");
+        Storage.markBookReading(id);
+        buecherSelectedShelfId = null;
+        showToast("Zurück zu „Aktuell am Lesen“");
+        renderBuecher();
+      });
+    });
+
+    container.querySelectorAll("[data-del-book]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-book");
+        const removed = allBooks.find((b) => b.id === id);
+        Storage.deleteBook(id);
+        if (buecherSelectedShelfId === id) buecherSelectedShelfId = null;
+        renderBuecher();
+        if (removed) {
+          showUndoToast("Buch gelöscht", () => {
+            Storage.restoreBook(removed);
+            renderBuecher();
+          });
+        }
+      });
+    });
+
+    container.querySelectorAll("[data-spine-book]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-spine-book");
+        buecherSelectedShelfId = buecherSelectedShelfId === id ? null : id;
+        renderBuecher();
+      });
+    });
   }
 
   /* ---------------------------------------------------------------- */
@@ -4982,6 +5388,19 @@
         <button class="btn btn-primary btn-block" id="saveGoalsBtn" style="margin-top:12px;">Ziele speichern</button>
       </div>
 
+      <h2 class="section-title">📚 Lese-Ziele</h2>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">Seiten-Ziel pro Tag</label>
+          <input type="number" min="1" step="1" id="goalPagesInput" value="${settings.dailyPagesGoal}">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label">Jahres-Lesechallenge (Bücher pro Jahr)</label>
+          <input type="number" min="1" step="1" id="goalYearlyBooksInput" value="${settings.yearlyBooksGoal}">
+        </div>
+        <button class="btn btn-primary btn-block" id="saveReadingGoalsBtn" style="margin-top:12px;">Lese-Ziele speichern</button>
+      </div>
+
       <h2 class="section-title">Wochenziel</h2>
       <div class="card">
         <div class="field">
@@ -5083,6 +5502,13 @@
       showToast("Ziele gespeichert");
     });
 
+    document.getElementById("saveReadingGoalsBtn").addEventListener("click", () => {
+      const pages = Math.max(1, parseInt(document.getElementById("goalPagesInput").value, 10) || DEFAULT_PAGES_GOAL);
+      const yearlyBooks = Math.max(1, parseInt(document.getElementById("goalYearlyBooksInput").value, 10) || DEFAULT_YEARLY_BOOKS_GOAL);
+      Storage.saveSettings({ dailyPagesGoal: pages, yearlyBooksGoal: yearlyBooks });
+      showToast("Lese-Ziele gespeichert");
+    });
+
     function updateWeeklyGoalFieldsVisibility() {
       const mode = document.getElementById("weeklyGoalModeInput").value;
       document.getElementById("weeklyGoalSessionsField").style.display = mode === "sessions" ? "block" : "none";
@@ -5168,7 +5594,7 @@
   /* Tab-Steuerung                                                      */
   /* ---------------------------------------------------------------- */
 
-  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht, reise: renderReise, einstellungen: renderEinstellungen };
+  const renderers = { heute: renderHeute, woche: renderWoche, kalender: renderKalender, monat: renderMonat, fotos: renderFotos, challenge: renderChallenge, trends: renderTrends, gewicht: renderGewicht, reise: renderReise, buecher: renderBuecher, einstellungen: renderEinstellungen };
 
   function switchTab(tab) {
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
