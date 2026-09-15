@@ -792,16 +792,21 @@ und Name ändern sich.
 Ein komplett neuer Tab 📚 **Bücher** dreht sich rund ums Lesen – als
 eigener Lebensbereich, unabhängig vom Fitness-Tracking:
 
-- **Seiten-Tracking an jedem Tag**: Sowohl im Heute-Tab als auch im
-  Kalender (unter dem ausgewählten Tag) gibt es jetzt eine eigene 📖
-  **Lesen**-Karte, genau wie bei Geplant/To-Do. Buch auswählen, Seitenzahl
-  eintragen, fertig – ein Fortschrittsbalken zeigt den Stand zum
-  Tagesziel, und im Kalender-Monatsraster markiert ein kleines 📖-Symbol
-  Tage mit Lese-Eintrag.
+- **Seiten-Tracking an jedem Tag**: Sowohl im Heute-Tab (ganz unten, nach
+  den Aktivitäten) als auch im Kalender (unter dem ausgewählten Tag) gibt
+  es eine eigene 📖 **Lesen**-Karte. Getrackt wird dabei immer die
+  *aktuelle Seite* ("ich bin jetzt bei Seite 92"), nicht die Anzahl
+  gelesener Seiten pro Eintrag – die App rechnet daraus selbst aus, wie
+  viele Seiten seit dem letzten Eintrag dazugekommen sind, und zeigt einen
+  Fortschrittsbalken zum Tagesziel. Ein Überblick über alle aktuell
+  gelesenen Bücher mit ihrem Stand steht direkt mit in der Karte. Im
+  Kalender-Monatsraster markiert ein kleines 📖-Symbol Tage mit
+  Lese-Eintrag.
 - **Bücher verwalten im Bücher-Tab**: Neue Bücher landen zunächst unter
   "Aktuell am Lesen" (Status *Reading*) – dort siehst du direkt den
-  bisherigen Lesefortschritt (Seiten gelesen / Gesamtseiten, falls
-  angegeben) und kannst ein Buch mit einem Klick als *Read* markieren.
+  Stand (Seite X von Y, falls eine Gesamtseitenzahl hinterlegt ist) und
+  kannst die aktuelle Seite auch direkt am Buch eintragen, ganz ohne Umweg
+  über Heute/Kalender. Ein Klick markiert ein Buch als *Read*.
 - **Tagesziel in den Einstellungen**: Unter Einstellungen → 📚 Lese-Ziele
   lässt sich ein tägliches Seiten-Ziel festlegen (Standard: 15 Seiten) –
   genau wie bei Schritten, Liegestützen & Co.

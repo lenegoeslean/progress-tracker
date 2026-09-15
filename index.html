@@ -321,16 +321,22 @@
   .best-row .best-sub{font-size:11px; color:var(--text-muted); font-weight:500;}
 
   .book-card{
-    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
     padding:14px; border-radius:var(--radius-sm);
     margin-bottom:10px; border:1px solid var(--border);
     background:var(--card);
     transition:background-color .3s ease, border-color .15s ease;
   }
   .book-card:last-child{margin-bottom:0;}
+  .book-card-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .book-card-main{flex:1; min-width:0;}
   .book-card-title{font-size:14px; font-weight:800; letter-spacing:-0.01em;}
   .book-card-author{font-size:12px; color:var(--text-muted); font-weight:600; margin-top:1px;}
+  .update-page-form input{padding:9px 11px; font-size:13px;}
+
+  .reading-overview{margin-bottom:10px;}
+  .reading-overview-row{padding:9px 0; border-bottom:1px solid var(--border);}
+  .reading-overview-row:last-child{border-bottom:none;}
+  .reading-overview-title{font-size:13px; font-weight:700;}
 
   .bookshelf{display:flex; align-items:flex-end; gap:6px; overflow-x:auto; padding:6px 2px 10px; scrollbar-width:none; -ms-overflow-style:none;}
   .bookshelf::-webkit-scrollbar{display:none;}

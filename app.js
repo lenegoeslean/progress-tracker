@@ -471,15 +471,25 @@
       entry.reading = entry.reading.filter((r) => r.id !== id);
       this.setEntry(dateISO, entry);
     },
-    getTotalPagesReadForBook(bookId) {
+    /* Liefert je Buch eine Zeitleiste {datum -> höchste an dem Tag
+       eingetragene Seitenzahl}, sortiert nach Datum. Grundlage für
+       "aktuelle Seite" (letzter Eintrag) und für die Tages-/Streak-
+       Berechnung (Differenz zum jeweils vorherigen Eintrag). */
+    getBookPageTimeline(bookId) {
       const data = this.load();
-      let total = 0;
+      const byDate = {};
       Object.keys(data.entries).forEach((iso) => {
         (data.entries[iso].reading || []).forEach((r) => {
-          if (r.bookId === bookId) total += Number(r.pages) || 0;
+          if (r.bookId !== bookId) return;
+          const p = Number(r.page) || 0;
+          if (!(iso in byDate) || p > byDate[iso]) byDate[iso] = p;
         });
       });
-      return total;
+      return Object.keys(byDate).sort().map((iso) => ({ date: iso, page: byDate[iso] }));
+    },
+    getCurrentPageForBook(bookId) {
+      const timeline = this.getBookPageTimeline(bookId);
+      return timeline.length ? timeline[timeline.length - 1].page : 0;
     },
     getSettings() {
       const data = this.load();
@@ -774,7 +784,7 @@
     books.forEach((b) => { booksById[b.id] = b; });
     const readingBooks = books.filter((b) => b.status === "reading");
     const goals = Storage.getSettings();
-    const pagesToday = (entry.reading || []).reduce((sum, r) => sum + (Number(r.pages) || 0), 0);
+    const pagesToday = computeReadingProgressByDate()[dateISO] || 0;
     const pagesPct = Math.min(100, Math.round((pagesToday / goals.dailyPagesGoal) * 100));
     const readingRows = (entry.reading && entry.reading.length)
       ? entry.reading.map((r) => {
@@ -786,7 +796,7 @@
               <div class="icon-badge" style="background:#EADCF8">📖</div>
               <div>
                 <div>${esc(title)}</div>
-                <div class="stats">${r.pages} Seiten</div>
+                <div class="stats">Seite ${r.page}</div>
               </div>
             </div>
             <div class="item-actions">
@@ -794,8 +804,47 @@
             </div>
           </div>`;
         }).join("")
-      : emptyHintHTML("📖", "Heute noch nichts gelesen.");
-    const readingBookOptions = readingBooks.map((b) => `<option value="${b.id}">${esc(b.title)}</option>`).join("");
+      : emptyHintHTML("📖", "Heute noch nichts eingetragen.");
+    const readingOverviewHTML = readingBooks.length
+      ? `<div class="reading-overview">${readingBooks.map((b) => {
+          const current = Storage.getCurrentPageForBook(b.id);
+          const pct = b.totalPages ? Math.min(100, Math.round((current / b.totalPages) * 100)) : null;
+          return `
+          <div class="reading-overview-row">
+            <div class="reading-overview-title">${esc(b.title)}</div>
+            ${b.totalPages
+              ? `<div class="progress-bar-lg" style="margin:4px 0;"><div class="fill" style="width:${pct}%"></div></div>
+                 <div class="small muted">Seite ${current} / ${b.totalPages}</div>`
+              : `<div class="small muted">${current > 0 ? `Seite ${current}` : "Noch keine Seite eingetragen"}</div>`}
+          </div>`;
+        }).join("")}</div>`
+      : "";
+    const readingBookOptions = readingBooks.map((b) => `<option value="${b.id}" data-current="${Storage.getCurrentPageForBook(b.id)}">${esc(b.title)}</option>`).join("");
+    const readingSectionHTML = `
+      <h2 class="section-title">📖 Lesen</h2>
+      <div class="card">
+        ${readingOverviewHTML}
+        <div class="activity-list" style="margin-top:${readingBooks.length ? "12px" : "0"};">${readingRows}</div>
+        <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${pagesPct}%"></div></div>
+        <div class="goal-caption reading-goal-caption">${pagesToday >= goals.dailyPagesGoal ? `🎯 Leseziel erreicht (${goals.dailyPagesGoal} Seiten heute)!` : `${pagesToday} / ${goals.dailyPagesGoal} Seiten heute`}</div>
+        ${readingBooks.length ? `
+        <form class="add-reading-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px;">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label">Buch</label>
+              <select class="reading-book-select">${readingBookOptions}</select>
+            </div>
+            <div class="field">
+              <label class="field-label">Neue Seite</label>
+              <input type="number" min="1" step="1" class="reading-page-input" placeholder="z. B. 92">
+            </div>
+          </div>
+          <div class="small muted reading-current-hint" style="margin-top:6px;"></div>
+          <button type="submit" class="btn btn-secondary btn-block reading-submit-btn" style="margin-top:8px;">✓ Seite speichern</button>
+        </form>
+        ` : `<div class="small muted" style="margin-top:10px;">Noch kein Buch als „Aktuell am Lesen" markiert. <button class="btn-ghost btn-sm" data-goto="buecher" style="margin-left:4px;">Buch hinzufügen</button></div>`}
+      </div>
+    `;
 
     const stepsVal = entry.steps || 0;
     const stepsPct = Math.min(100, Math.round((stepsVal / goals.stepsGoal) * 100));
@@ -846,28 +895,6 @@
           <button type="submit" class="btn btn-secondary todo-submit-btn" style="white-space:nowrap;">+ Hinzufügen</button>
         </form>
         <div class="small muted" style="margin-top:10px;">Für alles, was du dir sonst noch für diesen Tag vornimmst – unabhängig vom Training.</div>
-      </div>
-
-      <h2 class="section-title">📖 Lesen</h2>
-      <div class="card">
-        <div class="activity-list">${readingRows}</div>
-        <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${pagesPct}%"></div></div>
-        <div class="goal-caption">${pagesToday >= goals.dailyPagesGoal ? `🎯 Leseziel erreicht (${goals.dailyPagesGoal} Seiten)!` : `${pagesToday} / ${goals.dailyPagesGoal} Seiten`}</div>
-        ${readingBooks.length ? `
-        <form class="add-reading-form" style="margin-top:10px; border-top:1px solid var(--border); padding-top:14px;">
-          <div class="field-grid">
-            <div class="field">
-              <label class="field-label">Buch</label>
-              <select class="reading-book-select">${readingBookOptions}</select>
-            </div>
-            <div class="field">
-              <label class="field-label">Seiten</label>
-              <input type="number" min="1" step="1" class="reading-pages-input" placeholder="z. B. 20">
-            </div>
-          </div>
-          <button type="submit" class="btn btn-secondary btn-block reading-submit-btn" style="margin-top:8px;">+ Lesefortschritt eintragen</button>
-        </form>
-        ` : `<div class="small muted" style="margin-top:10px;">Noch kein Buch als „Aktuell am Lesen" markiert. <button class="btn-ghost btn-sm" data-goto="buecher" style="margin-left:4px;">Buch hinzufügen</button></div>`}
       </div>
 
       <div class="card">
@@ -933,6 +960,8 @@
           <button type="button" class="btn btn-ghost btn-block cancel-edit-btn" style="margin-top:8px; display:none;">Bearbeiten abbrechen</button>
         </form>
       </div>
+
+      ${readingSectionHTML}
     `;
   }
 
@@ -1129,16 +1158,27 @@
     });
     const readingForm = container.querySelector(".add-reading-form");
     if (readingForm) {
+      const readingBookSelect = readingForm.querySelector(".reading-book-select");
+      const readingHint = readingForm.querySelector(".reading-current-hint");
+      function updateReadingHint() {
+        if (!readingBookSelect || !readingHint) return;
+        const opt = readingBookSelect.options[readingBookSelect.selectedIndex];
+        const current = opt ? parseInt(opt.getAttribute("data-current"), 10) || 0 : 0;
+        readingHint.textContent = current > 0 ? `Zuletzt eingetragen: Seite ${current}` : "Noch keine Seite für dieses Buch eingetragen";
+      }
+      updateReadingHint();
+      if (readingBookSelect) readingBookSelect.addEventListener("change", updateReadingHint);
+
       readingForm.addEventListener("submit", (ev) => {
         ev.preventDefault();
-        const bookSelect = readingForm.querySelector(".reading-book-select");
-        const pagesInput = readingForm.querySelector(".reading-pages-input");
-        const pages = Math.max(0, parseInt(pagesInput.value, 10) || 0);
-        if (!bookSelect.value || pages <= 0) { showToast("Bitte Buch und Seitenzahl angeben"); return; }
-        Storage.addReadingLog(dateISO, { bookId: bookSelect.value, pages });
-        const entryNow = Storage.getEntry(dateISO);
-        const totalToday = entryNow.reading.reduce((s, r) => s + (Number(r.pages) || 0), 0);
-        showToast(totalToday >= goals.dailyPagesGoal ? "🎯 Leseziel erreicht!" : "Lesefortschritt gespeichert");
+        const pageInput = readingForm.querySelector(".reading-page-input");
+        const page = Math.max(0, parseInt(pageInput.value, 10) || 0);
+        if (!readingBookSelect.value || page <= 0) { showToast("Bitte Buch und Seitenzahl angeben"); return; }
+        Storage.addReadingLog(dateISO, { bookId: readingBookSelect.value, page });
+        const totalToday = computeReadingProgressByDate()[dateISO] || 0;
+        showToast(totalToday >= goals.dailyPagesGoal ? "🎯 Leseziel erreicht!" : "Seite gespeichert");
+        pageInput.value = "";
+        updateReadingHint();
         onChange();
       });
     }
@@ -3576,6 +3616,27 @@
   /* Tab: Bücher                                                        */
   /* ---------------------------------------------------------------- */
 
+  /* Statt "gelesener Seiten pro Eintrag" wird pro Buch immer die aktuelle
+     Seitenzahl eingetragen (z. B. "ich bin jetzt bei Seite 92"). Der an
+     einem Tag tatsächlich gelesene Umfang ergibt sich als Differenz zur
+     zuletzt bekannten Seite dieses Buches – über alle Bücher summiert,
+     ergibt das die "heute gelesenen Seiten". Einmal zentral berechnet und
+     von Tagesansicht, Lesestreak und Bücher-Tab gemeinsam genutzt. */
+  function computeReadingProgressByDate() {
+    const books = Storage.getBooks();
+    const result = {};
+    books.forEach((b) => {
+      const timeline = Storage.getBookPageTimeline(b.id);
+      let prevPage = 0;
+      timeline.forEach((point) => {
+        const delta = Math.max(0, point.page - prevPage);
+        if (delta > 0) result[point.date] = (result[point.date] || 0) + delta;
+        prevPage = point.page;
+      });
+    });
+    return result;
+  }
+
   /* Lesestreak: eigenständige, vom Fitness-Streak (computeStreaks)
      komplett unabhängige Berechnung – Lesen ist ein eigener Lebensbereich
      und soll das Wachstum von Giraffi/Bärls/Sharky/Wolli nicht
@@ -3583,11 +3644,10 @@
      nur ein bereits vergangener Tag ohne erreichtes Seitenziel reißt die
      Serie, ein noch leerer "heute" (noch nicht vorbei) nicht. */
   function computeReadingStreak() {
-    const data = Storage.load();
     const goals = Storage.getSettings();
-    const pagesFor = (e) => (e && e.reading ? e.reading.reduce((s, r) => s + (Number(r.pages) || 0), 0) : 0);
-    const isActive = (e) => pagesFor(e) >= goals.dailyPagesGoal;
-    const activeDates = Object.keys(data.entries).filter((iso) => isActive(data.entries[iso])).sort();
+    const progressByDate = computeReadingProgressByDate();
+    const isActive = (iso) => (progressByDate[iso] || 0) >= goals.dailyPagesGoal;
+    const activeDates = Object.keys(progressByDate).filter(isActive).sort();
     let longest = activeDates.length ? 1 : 0, run = 1;
     for (let i = 1; i < activeDates.length; i++) {
       const diffDays = Math.round((fromISO(activeDates[i]) - fromISO(activeDates[i - 1])) / 86400000);
@@ -3596,10 +3656,10 @@
     }
     let current = 0;
     let cursor = new Date();
-    if (!isActive(data.entries[toISO(cursor)])) {
+    if (!isActive(toISO(cursor))) {
       cursor = addDays(cursor, -1);
     }
-    while (isActive(data.entries[toISO(cursor)])) {
+    while (isActive(toISO(cursor))) {
       current++;
       cursor = addDays(cursor, -1);
     }
@@ -3607,32 +3667,25 @@
   }
 
   /* Fertig-Prognose pro Buch: lineare Hochrechnung aus dem Lesetempo der
-     letzten Lese-Tage (analog zu computeGoalDateProjection beim Gewicht). */
+     letzten Update-Tage (analog zu computeGoalDateProjection beim
+     Gewicht) – Grundlage ist die Zeitleiste der jeweils eingetragenen
+     aktuellen Seite, kein Aufsummieren mehr nötig. */
   function computeBookFinishProjection(book) {
     if (!book || book.status !== "reading" || !book.totalPages) return null;
-    const data = Storage.load();
-    const byDate = {};
-    Object.keys(data.entries).forEach((iso) => {
-      (data.entries[iso].reading || []).forEach((r) => {
-        if (r.bookId === book.id) byDate[iso] = (byDate[iso] || 0) + (Number(r.pages) || 0);
-      });
-    });
-    const dates = Object.keys(byDate).sort();
-    if (!dates.length) return { status: "insufficient" };
-    let cum = 0;
-    const cumPoints = dates.map((iso) => { cum += byDate[iso]; return { date: iso, value: cum }; });
-    const totalRead = cum;
-    const remaining = book.totalPages - totalRead;
-    if (remaining <= 0) return { status: "reached", pagesRead: totalRead };
-    const recent = cumPoints.slice(-8);
+    const timeline = Storage.getBookPageTimeline(book.id);
+    if (!timeline.length) return { status: "insufficient" };
+    const currentPage = timeline[timeline.length - 1].page;
+    const remaining = book.totalPages - currentPage;
+    if (remaining <= 0) return { status: "reached", currentPage };
+    const recent = timeline.slice(-8);
     const first = recent[0], last = recent[recent.length - 1];
     const days = (fromISO(last.date) - fromISO(first.date)) / 86400000;
-    if (days < 2 || recent.length < 2) return { status: "insufficient", pagesRead: totalRead };
-    const ratePerDay = (last.value - first.value) / days;
-    if (ratePerDay < 0.2) return { status: "stalled", pagesRead: totalRead };
+    if (days < 2 || recent.length < 2) return { status: "insufficient", currentPage };
+    const ratePerDay = (last.page - first.page) / days;
+    if (ratePerDay < 0.2) return { status: "stalled", currentPage };
     const daysNeeded = Math.ceil(remaining / ratePerDay);
     const projectedDate = addDays(fromISO(last.date), daysNeeded);
-    return { status: "ok", date: projectedDate, pagesRead: totalRead, pagesPerDay: ratePerDay };
+    return { status: "ok", date: projectedDate, currentPage, pagesPerDay: ratePerDay };
   }
 
   /* Jahres-Lesechallenge: Anzahl im aktuellen Kalenderjahr fertig
@@ -3667,37 +3720,40 @@
     const readBooks = allBooks.filter((b) => b.status === "read").sort((a, b) => (b.finishedDate || "").localeCompare(a.finishedDate || ""));
 
     const todayISO = toISO(new Date());
-    const todayEntry = Storage.getEntry(todayISO);
-    const pagesToday = (todayEntry.reading || []).reduce((sum, r) => sum + (Number(r.pages) || 0), 0);
+    const pagesToday = computeReadingProgressByDate()[todayISO] || 0;
     const streak = computeReadingStreak();
     const yearly = computeYearlyReadingChallenge();
 
     const readingRows = readingList.length
       ? readingList.map((b) => {
-          const pagesRead = Storage.getTotalPagesReadForBook(b.id);
-          const pct = b.totalPages ? Math.min(100, Math.round((pagesRead / b.totalPages) * 100)) : null;
+          const currentPage = Storage.getCurrentPageForBook(b.id);
+          const pct = b.totalPages ? Math.min(100, Math.round((currentPage / b.totalPages) * 100)) : null;
           let projectionText = "";
           if (b.totalPages) {
             const projection = computeBookFinishProjection(b);
-            if (!projection || projection.status === "insufficient") projectionText = "Noch zu wenige Lese-Tage für eine Prognose.";
+            if (!projection || projection.status === "insufficient") projectionText = "Noch zu wenige Update-Tage für eine Prognose.";
             else if (projection.status === "reached") projectionText = "🎉 Seitenzahl erreicht!";
             else if (projection.status === "stalled") projectionText = "Zuletzt kaum Fortschritt – Prognose pausiert.";
             else if (projection.status === "ok") projectionText = `Voraussichtlich fertig am ${formatShortDate(projection.date)} (${projection.pagesPerDay.toFixed(1)} Seiten/Tag)`;
           }
           return `
           <div class="book-card" data-book-id="${b.id}">
-            <div class="book-card-main">
-              <div class="book-card-title">${esc(b.title)}</div>
-              ${b.author ? `<div class="book-card-author">${esc(b.author)}</div>` : ""}
-              ${b.totalPages ? `
-                <div class="progress-bar-lg" style="margin:8px 0 4px;"><div class="fill" style="width:${pct}%"></div></div>
-                <div class="small muted">${pagesRead} / ${b.totalPages} Seiten${projectionText ? " · " + projectionText : ""}</div>
-              ` : `<div class="small muted" style="margin-top:6px;">${pagesRead} Seiten gelesen</div>`}
-            </div>
-            <div class="item-actions" style="flex-direction:column; align-items:flex-end; gap:6px;">
-              <button type="button" class="btn-ghost btn-sm" data-mark-read="${b.id}" style="white-space:nowrap;">✓ Gelesen</button>
+            <div class="book-card-top">
+              <div class="book-card-main">
+                <div class="book-card-title">${esc(b.title)}</div>
+                ${b.author ? `<div class="book-card-author">${esc(b.author)}</div>` : ""}
+              </div>
               <button class="del-btn" data-del-book="${b.id}" aria-label="Löschen">✕</button>
             </div>
+            ${b.totalPages ? `
+              <div class="progress-bar-lg" style="margin:10px 0 4px;"><div class="fill" style="width:${pct}%"></div></div>
+              <div class="small muted">Seite ${currentPage} / ${b.totalPages} (${pct} %)${projectionText ? " · " + projectionText : ""}</div>
+            ` : `<div class="small muted" style="margin-top:8px;">${currentPage > 0 ? `Aktuell bei Seite ${currentPage}` : "Noch keine Seite eingetragen"}</div>`}
+            <form class="update-page-form" data-book-id="${b.id}" style="display:flex; gap:8px; margin-top:12px;">
+              <input type="number" min="1" step="1" class="update-page-input" placeholder="${currentPage > 0 ? `Neue Seite (zuletzt ${currentPage})` : "Neue Seite, z. B. 20"}" style="flex:1;">
+              <button type="submit" class="btn btn-secondary btn-sm" style="white-space:nowrap;">Speichern</button>
+            </form>
+            <button type="button" class="btn btn-ghost btn-block btn-sm" data-mark-read="${b.id}" style="margin-top:8px;">✓ Als gelesen markieren</button>
           </div>`;
         }).join("")
       : emptyHintHTML("📖", "Noch kein Buch als „Aktuell am Lesen“ eingetragen.");
@@ -3781,6 +3837,19 @@
       Storage.addBook({ title, author: authorInput.value.trim(), totalPages });
       showToast("Buch hinzugefügt");
       renderBuecher();
+    });
+
+    container.querySelectorAll(".update-page-form").forEach((form) => {
+      form.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const bookId = form.getAttribute("data-book-id");
+        const input = form.querySelector(".update-page-input");
+        const page = Math.max(0, parseInt(input.value, 10) || 0);
+        if (!page) { showToast("Bitte eine Seitenzahl eingeben"); return; }
+        Storage.addReadingLog(toISO(new Date()), { bookId, page });
+        showToast("Seite gespeichert");
+        renderBuecher();
+      });
     });
 
     container.querySelectorAll("[data-mark-read]").forEach((btn) => {
